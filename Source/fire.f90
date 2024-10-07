@@ -322,8 +322,7 @@ ELSE DO_CHEM_LOAD_BALANCE_IF
          !$OMP END DO
          ! Call chemistry on chemically active cut-cells
          IF (CC_IBM) THEN
-            !$OMP DO PRIVATE(JCC,I, J, K,  CC, ZZ_GET, PRES, DZZ, DZ_F0, RRTMP0, MOLPCM3, STOP_STATUS, CHEM_SUBIT_TMP, &
-            !$OMP REAC_SOURCE_TERM_TMP, Q_REAC_TMP) SCHEDULE(DYNAMIC)
+            !$OMP DO SCHEDULE(DYNAMIC)
             DO ICC=1,MESHES(NM)%N_CUTCELL_MESH
                CC => CUT_CELL(ICC); I = CC%IJK(IAXIS); J = CC%IJK(JAXIS); K = CC%IJK(KAXIS)
                DO JCC=1,CC%NCELL
