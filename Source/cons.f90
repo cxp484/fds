@@ -884,6 +884,19 @@ END MODULE RADCONS
 MODULE CHEMCONS
 USE PRECISION_PARAMETERS
 
+!> \brief Parameters associated with IGNITION_ZONES
+TYPE IGNITION_ZONE_TYPE
+   REAL(EB) :: X1            !< Lower x bound of Ignition Zone
+   REAL(EB) :: X2            !< Upper x bound of Ignition Zone
+   REAL(EB) :: Y1            !< Lower y bound of Ignition Zone
+   REAL(EB) :: Y2            !< Upper y bound of Ignition Zone
+   REAL(EB) :: Z1            !< Lower z bound of Ignition Zone
+   REAL(EB) :: Z2            !< Upper z bound of Ignition Zone
+   REAL(EB) :: TMP           !< Temperature of Ignition Zone
+   INTEGER :: DEVC_INDEX=0   !< Index of device controlling the status of the zone
+   CHARACTER(LABEL_LENGTH) :: DEVC_ID='null'  !< Name of device controlling the status of the zone
+END TYPE IGNITION_ZONE_TYPE
+
 INTEGER, ALLOCATABLE, DIMENSION(:) :: YP2ZZ
 REAL(EB) :: ODE_MIN_ATOL= -1._EB
 LOGICAL  :: EQUIV_RATIO_CHECK = .FALSE.
@@ -899,5 +912,14 @@ LOGICAL  :: WRITE_CVODE_SUBSTEPS = .FALSE.
 REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: CVODE_SUBSTEP_DATA
 INTEGER :: TOTAL_SUBSTEPS_TAKEN
 
-END MODULE CHEMCONS
+! FOR THICKENED FLAME MODEL
+REAL(EB) :: FLAME_THICK_FACTOR=1.0_EB
 
+! IGNITION ZONES
+INTEGER :: N_IGNITION_ZONES = 0
+TYPE(IGNITION_ZONE_TYPE), DIMENSION(MAX_IGNITION_ZONES) :: IGNITION_ZONES      !< Coordinates of ignition zones used for detailed chemistry
+REAL(EB) :: MIN_IGN_ZN_EQUIV_RATIO=1.E-3_EB
+REAL(EB) :: MAX_IGN_ZN_EQUIV_RATIO=100.0_EB
+
+
+END MODULE CHEMCONS
