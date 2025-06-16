@@ -11527,10 +11527,10 @@ IF (MY_RANK == 0 .AND. ALLOCATED(CVODE_SUBSTEP_DATA)) THEN
      DO COLI = 1, NCOLS
         IF (COLI == NCOLS) THEN
            ! Writing the last column without a trailing comma
-           WRITE(LU_CVODE_SUBSTEPS, '(F18.5)') CVODE_SUBSTEP_DATA(ROWI, COLI)
+           WRITE(LU_CVODE_SUBSTEPS, '(ES12.5)') CVODE_SUBSTEP_DATA(ROWI, COLI)
         ELSE
            ! Writing columns with commas
-           WRITE(LU_CVODE_SUBSTEPS, '(F18.5, A)', ADVANCE="NO") CVODE_SUBSTEP_DATA(ROWI, COLI), ','
+           WRITE(LU_CVODE_SUBSTEPS, '(ES12.5, A)', ADVANCE="NO") CVODE_SUBSTEP_DATA(ROWI, COLI), ','
         ENDIF   
      ENDDO
   ENDDO
