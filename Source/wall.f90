@@ -1322,6 +1322,15 @@ METHOD_OF_MASS_TRANSFER: SELECT CASE(SPECIES_BC_INDEX)
                      B1%M_DOT_G_PP_ACTUAL(N) = 0._EB
                   ENDIF
                ENDIF
+            ! Trapezoidal HRR curve for level set spread
+            ELSEIF (SF%VEG_LSET_SPREAD) THEN
+               IF (TSI <= B2%TAU_LS) THEN
+                  B1%M_DOT_G_PP_ACTUAL(N) = TSI/B2%TAU_LS*SF%MASS_FLUX(N)
+               ELSEIF (TSI <= B1%BURN_DURATION-B2%TAU_LS) THEN
+                  B1%M_DOT_G_PP_ACTUAL(N) = SF%MASS_FLUX(N)
+               ELSE
+                  B1%M_DOT_G_PP_ACTUAL(N) = (1-(TSI-B1%BURN_DURATION+B2%TAU_LS)/B2%TAU_LS)*SF%MASS_FLUX(N)
+               ENDIF
             ELSE
                B1%M_DOT_G_PP_ACTUAL(N) = EVALUATE_RAMP(TSI,SF%RAMP(N)%INDEX,TAU=SF%RAMP(N)%TAU)*SF%MASS_FLUX(N)
             ENDIF
@@ -3616,7 +3625,7 @@ ELSE H_FIXED_IF
             NUSSELT_IMPINGE = 0._EB
             IF (SF%HEAT_TRANSFER_MODEL==IMPINGING_JET_HTC_MODEL) THEN
                XX = SQRT( (SF%XYZ(1)-BC%X)**2 + (SF%XYZ(2)-BC%Y)**2 + (SF%XYZ(3)-BC%Z)**2 )
-               NUSSELT_IMPINGE = HEAT_TRANSFER_COEFFICIENT*EXP(-0.5_EB * (XX / SF%HTC_SIGMA)**2) * CONV_LENGTH/K_G
+               NUSSELT_IMPINGE = SF%H_FIXED*EXP(-0.5_EB * (XX / SF%HTC_SIGMA)**2) * CONV_LENGTH/K_G
             ENDIF
             IF (PRESENT(PARTICLE_INDEX_IN)) THEN
                HEAT_TRANSFER_COEFFICIENT = MAX(NUSSELT_FORCED,NUSSELT_FREE)*K_G/CONV_LENGTH

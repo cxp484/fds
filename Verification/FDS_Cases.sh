@@ -346,6 +346,7 @@ $QFDS -d HVAC HVAC_damper.fds
 $QFDS -d HVAC HVAC_energy_pressure.fds
 $QFDS -d HVAC HVAC_filter.fds
 $QFDS -d HVAC HVAC_flow_loss.fds
+$QFDS -d HVAC HVAC_geom.fds
 $QFDS -d HVAC HVAC_mass_conservation.fds
 $QFDS -d HVAC HVAC_mass_transport.fds
 $QFDS -d HVAC HVAC_mass_transport_1.fds
@@ -370,6 +371,7 @@ $QFDS -d HVAC leak_test_2.fds
 $QFDS -d HVAC leak_enthalpy.fds
 $QFDS -p 2 -d HVAC leak_test_3.fds
 $QFDS -d HVAC leak_test_4.fds
+$QFDS -d HVAC leak_geom.fds
 $QFDS -d HVAC HVAC_leak_exponent.fds
 $QFDS -p 8 -d HVAC HVAC_leak_exponent_2.fds
 
@@ -880,6 +882,8 @@ $QFDS -d WUI LS_ellipse_0ms_00deg.fds
 $QFDS -d WUI LS_ellipse_5ms_00deg.fds
 $QFDS -d WUI LS_ellipse_0ms_30deg.fds
 $QFDS -d WUI LS_ellipse_5ms_30deg.fds
+$QFDS -d WUI LS_wind_ramp_lin.fds
+$QFDS -d WUI LS_wind_ramp_quad.fds
 $QFDS -d WUI LS4_ember_ignition.fds
 $QFDS -d WUI LS4_ember_yield.fds
 $QFDS -d WUI Morvan_TGA.fds

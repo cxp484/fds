@@ -176,14 +176,15 @@ IF (READ_EXTERNAL) THEN
    IF (DT_EXTERNAL_HEARTBEAT > 0._EB) LU_EXTERNAL_HEARTBEAT = GET_FILE_NUMBER()
 ENDIF
 
-! Set up the background atmosphere and initialize the WALL cells
+! Set up the background atmosphere and initialize the boundary (WALL) arrays
 
 DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
    CALL INITIALIZE_ATMOSPHERE(NM)
-   CALL INITIALIZE_WALL_ARRAY(NM)
+   IF (.NOT.SETUP_ONLY) CALL INITIALIZE_WALL_ARRAY(NM)
 ENDDO
-
 IF (MY_RANK==0 .AND. VERBOSE) CALL VERBOSE_PRINTOUT('Completed INITIALIZE_WALL_ARRAY')
+
+CALL PROC_HVAC
 
 ! Write the Smokeview (.smv) file using parallel MPI writes
 
@@ -545,6 +546,7 @@ INITIALIZATION_PHASE = .FALSE.
 IF (UNFREEZE_TIME > 0._EB) THEN 
    FREEZE_VELOCITY=.TRUE. 
    SOLID_PHASE_ONLY=.TRUE.
+   LOCK_TIME_STEP=.TRUE.
 ENDIF
 
 IF (MY_RANK==0 .AND. VERBOSE) CALL VERBOSE_PRINTOUT('Starting the time-stepping')
@@ -587,6 +589,16 @@ MAIN_LOOP: DO
    IF ((UNFREEZE_TIME > 0._EB).AND.(T>UNFREEZE_TIME)) THEN 
       FREEZE_VELOCITY=.FALSE.
       SOLID_PHASE_ONLY=.FALSE.
+      LOCK_TIME_STEP=.FALSE.
+      
+      UNFREEZE_DT_LOOP: DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
+         CALL CHECK_STABILITY(DT,DT_NEW,T,NM)
+      ENDDO UNFREEZE_DT_LOOP
+      IF (N_MPI_PROCESSES>1) THEN
+         CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,DT_NEW(1:NMESHES),&
+                             COUNTS,DISPLS,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,IERR)
+      ENDIF
+      DT = MINVAL(DT_NEW)
    ENDIF
 
    !================================================================================================================================
