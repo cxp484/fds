@@ -39,7 +39,7 @@ CONTAINS
 !> \param TN_C is the current time
 !> \param SUNVEC_Y is the current array of molar concentrations, temperature and pressure.
 !> \param SUNVEC_F is the array of derivatives returned
-!> \param USER_DATA is the user data array. Not yet used in FDS.
+!> \param C_USER_DATA is the user data array. Hold unburned zone data for mixing+chem.
 !> \details The right hand side function of the ode d[c]/dt = wdot (=f). Provides the Derivative function to CVODE.
 INTEGER(C_INT) FUNCTION RHSFN(TN_C, SUNVEC_Y, SUNVEC_F, C_USER_DATA) &
     RESULT(IERR) BIND(C,NAME='RHSFN')
@@ -86,7 +86,7 @@ END FUNCTION RHSFN
 !> \param CVEC is the current array of molar concentrations, temperature and pressure.
 !> \param FVEC is the array of derivatives returned
 !> \param TN is the current time
-!> \param USER_DATA is the user data containing mixing information
+!> \param USER_DATA is the user data array. Hold unburned zone data for mixing+chem.
 
 SUBROUTINE DERIVATIVE(CVEC,FVEC, TN, USER_DATA)
 USE PHYSICAL_FUNCTIONS, ONLY : GET_SPECIFIC_HEAT_INTERP, GET_ENTHALPY, GET_ENTHALPY_Z, &
@@ -98,7 +98,7 @@ REAL(EB), INTENT(IN) :: TN
 TYPE(USERDATA), INTENT(IN):: USER_DATA
 
 REAL(EB) :: R_F,MIN_SPEC(N_TRACKED_SPECIES), KG,  TMP, RHO, &
-          K_0, K_INF, P_RI, FCENT, B_I, RRTMP, THIRD_BODY_ENHANCEMENT, PR
+          K_0, K_INF, P_RI, FCENT, B_I, RRTMP, THIRD_BODY_ENHANCEMENT, PRES
 INTEGER :: I,NS, ITMP
 REAL(EB) :: ZZ(N_TRACKED_SPECIES), CP, HS_I, DG, TMPI
 REAL(EB) :: ZETA, MIXING_FACTOR, VOL_CHANGE_TERM, SUM_OMEGA_DOT, SUM_CC, MW0, MW, SUM_H_ZZ0, EXPONENT, CONC
@@ -106,7 +106,7 @@ TYPE(REACTION_TYPE), POINTER :: RN
 
 TMP = MAX(CVEC(N_TRACKED_SPECIES+1), MIN_CHEM_TMP)
 TMPI = 1._EB/TMP
-PR = CVEC(N_TRACKED_SPECIES+2) ! PA
+PRES = CVEC(N_TRACKED_SPECIES+2) ! PA
 RRTMP = 1._EB/(R0*TMP)
 ZETA = USER_DATA%ZETA0*EXP(-TN/USER_DATA%TAU_MIX)
 MIXING_FACTOR = 0._EB
@@ -118,7 +118,7 @@ IF (ANY(CVEC(1:N_TRACKED_SPECIES) >0)) THEN
    CALL MOLAR_CONC_TO_MASS_FRAC(CVEC(1:N_TRACKED_SPECIES), ZZ(1:N_TRACKED_SPECIES))
    CALL GET_MOLECULAR_WEIGHT(ZZ(1:N_TRACKED_SPECIES),MW)
 ELSE ! Enters at the first timestep when ZETA0=1.
-   RHO = PR*MW0/R0/TMP
+   RHO = PRES*MW0/R0/TMP
    MW = MW0
    ZZ(1:N_TRACKED_SPECIES) = USER_DATA%ZZ_0(1:N_TRACKED_SPECIES)
 ENDIF
@@ -160,7 +160,7 @@ REACTION_LOOP: DO I=1,N_REACTIONS
       IF (RN%N_THIRD > 0) THEN
          THIRD_BODY_ENHANCEMENT = DOT_PRODUCT(CVEC(1:N_SPECIES),RN%THIRD_EFF(1:N_SPECIES))
       ELSE
-         THIRD_BODY_ENHANCEMENT = PR*RRTMP
+         THIRD_BODY_ENHANCEMENT = PRES*RRTMP
       ENDIF
 
       IF (RN%REACTYPE==THREE_BODY_ARRHENIUS_TYPE) THEN
@@ -258,7 +258,7 @@ END FUNCTION CALCFCENT
 !> \param SUNVEC_Y is the current array of molar concentrations, temperature and pressure.
 !> \param SUNVEC_F is the array of derivatives returned
 !> \param SUNMAT_J is the Jacobian array returned to CVODE
-!> \param USER_DATA is the user data array. Not yet used in FDS.
+!> \param C_USER_DATA is the user data array. Hold unburned zone data for mixing+chem.
 !> \param TMP1 is not yet used in FDS.
 !> \param TMP2 is not yet used in FDS.
 !> \param TMP3 is not yet used in FDS.
@@ -328,6 +328,8 @@ END FUNCTION JACFN
 !> \param CVEC is the current array of molar concentrations, temperature and pressure.
 !> \param FVEC is the array of derivatives passed as input
 !> \param JMAT is the jacobian matrix returned
+!> \param TN is the current time provided by CVODE during callback, not the actual CFD time.
+!> \param USER_DATA is the user data array. Hold unburned zone data for mixing+chem.
 
 SUBROUTINE JACOBIAN(CVEC,FVEC,JMAT,TN,USER_DATA)
 
@@ -341,7 +343,7 @@ REAL(EB), INTENT(IN) :: TN
 TYPE(USERDATA), INTENT(IN):: USER_DATA
 
 REAL(EB) :: R_F,DCVEC1,DCVEC2, MIN_SPEC(N_TRACKED_SPECIES), KG,  TMP, RHO, &
-            K_0, K_INF, P_RI, FCENT, B_I, RRTMP, THIRD_BODY_ENHANCEMENT, PR
+            K_0, K_INF, P_RI, FCENT, B_I, RRTMP, THIRD_BODY_ENHANCEMENT, PRES
 REAL(EB) :: ZZ(N_TRACKED_SPECIES), CP_I(N_TRACKED_SPECIES), HS_I(N_TRACKED_SPECIES)
 REAL(EB) :: DKCDTBYKC, DBIDC(N_TRACKED_SPECIES), DBIDT, CP, DCPDT, DKINFDTMPBYKINF, DTMPDT, DG, TMPI, RHOI, CPI
 REAL(EB) :: ZETA, MIXING_FACTOR, SUM_OMEGA_DOT, SUM_CC, SUM_OMEGA_DOT_BY_CC, SUM_CC_I, ENRG_TERM, DUMMY1, DUMMY2, DUMMY3
@@ -352,7 +354,7 @@ TYPE(REACTION_TYPE), POINTER :: RN
 
 TMP = MAX(CVEC(N_TRACKED_SPECIES+1), MIN_CHEM_TMP)
 TMPI = 1._EB/TMP
-PR = CVEC(N_TRACKED_SPECIES+2) ! PA
+PRES = CVEC(N_TRACKED_SPECIES+2) ! PA
 RRTMP = 1._EB/(R0*TMP)
 ZETA = USER_DATA%ZETA0*EXP(-TN/USER_DATA%TAU_MIX)
 MIXING_FACTOR = 0._EB
@@ -364,7 +366,7 @@ IF (ANY(CVEC(1:N_TRACKED_SPECIES) >0)) THEN
    CALL MOLAR_CONC_TO_MASS_FRAC(CVEC(1:N_TRACKED_SPECIES), ZZ(1:N_TRACKED_SPECIES))
    CALL GET_MOLECULAR_WEIGHT(ZZ(1:N_TRACKED_SPECIES),MW)
 ELSE ! Enters at the first timestep when ZETA0=1.
-   RHO = PR*MW0/R0/TMP
+   RHO = PRES*MW0/R0/TMP
    MW = MW0
    ZZ(1:N_TRACKED_SPECIES) = USER_DATA%ZZ_0(1:N_TRACKED_SPECIES)
 ENDIF
@@ -407,7 +409,7 @@ REACTION_LOOP: DO I=1,N_REACTIONS
       IF (RN%N_THIRD > 0) THEN
          THIRD_BODY_ENHANCEMENT =  DOT_PRODUCT(CVEC(1:N_SPECIES),RN%THIRD_EFF(1:N_SPECIES))
       ELSE
-         THIRD_BODY_ENHANCEMENT = PR*RRTMP
+         THIRD_BODY_ENHANCEMENT = PRES*RRTMP
       ENDIF
       IF (RN%REACTYPE==THREE_BODY_ARRHENIUS_TYPE) THEN
          R_F = R_F * THIRD_BODY_ENHANCEMENT
@@ -659,13 +661,13 @@ END SUBROUTINE PRINT_JMAT
 !> \param RNI is the reaction index.
 !> \param K0 is the low pressure rate coeff.
 !> \param KINF is the high pressure rate coeff.
-!> \param PR is the pressure ratio.
+!> \param P_RATIO is the pressure ratio.
 !> \param F is the falloff function value.
 !> \param DBIDC is the derivative of modification factor w.r.t concentration (out).
 !> \param DBIDT is the derivative of modification factor w.r.t temperature (out).
 
-SUBROUTINE CALC_FALLOFF_DBIDC_AND_DBIDT(TMP, RNI, K0, KINF, PR, F, DBIDC, DBIDT)
-REAL(EB), INTENT(IN) :: TMP, PR, K0, KINF, F
+SUBROUTINE CALC_FALLOFF_DBIDC_AND_DBIDT(TMP, RNI, K0, KINF, P_RATIO, F, DBIDC, DBIDT)
+REAL(EB), INTENT(IN) :: TMP, P_RATIO, K0, KINF, F
 INTEGER, INTENT(IN) :: RNI
 REAL(EB), INTENT(INOUT) :: DBIDC(N_TRACKED_SPECIES)
 REAL(EB), INTENT(INOUT) :: DBIDT
@@ -680,37 +682,37 @@ DO NS=1,N_TRACKED_SPECIES
    DPRDBI = -RN%THIRD_EFF(NS     )*K0/KINF
    DFDBI = 0._EB
    IF (RN%REACTYPE==FALLOFF_TROE_TYPE) THEN
-      DFDBI = DDC_TROE(PR, F, DPRDBI, TMP, RNI)
+      DFDBI = DDC_TROE(P_RATIO, F, DPRDBI, TMP, RNI)
    ENDIF   
-   DBIDC(NS) = (DPRDBI/(PR*(1 + PR)) + DFDBI/F)
+   DBIDC(NS) = (DPRDBI/(P_RATIO*(1 + P_RATIO)) + DFDBI/F)
 ENDDO
 
 
-DPRDT = PR/TMP*( RN%N_T_LOW_PR + RN%E_LOW_PR*RRTMP - RN%N_T - RN%E*RRTMP - 1)
+DPRDT = P_RATIO/TMP*( RN%N_T_LOW_PR + RN%E_LOW_PR*RRTMP - RN%N_T - RN%E*RRTMP - 1)
 DFDT = 0._EB
 IF (RN%REACTYPE==FALLOFF_TROE_TYPE) THEN
-   DFDT = DDTMP_TROE(PR, F, DPRDT, TMP, RNI)
+   DFDT = DDTMP_TROE(P_RATIO, F, DPRDT, TMP, RNI)
 ENDIF   
-DBIDT = (DPRDT/(PR*(1 + PR)) + DFDT/F)
+DBIDT = (DPRDT/(P_RATIO*(1 + P_RATIO)) + DFDT/F)
 
 RETURN
 END SUBROUTINE CALC_FALLOFF_DBIDC_AND_DBIDT
 
 !> \brief Calculate derivative of TROE function w.r.t concentration  
-!> \param PR is the pressure ratio.
+!> \param P_RATIO is the pressure ratio.
 !> \param F is the falloff function value.
 !> \param DPRDC is the derivative of TROE function w.r.t concentration.
 !> \param TMP is the current temperature.
 !> \param RNI is the reaction index
-REAL(EB) FUNCTION DDC_TROE(PR, F, DPRDC, TMP, RNI) 
-REAL(EB), INTENT(IN) :: PR, F, DPRDC, TMP
+REAL(EB) FUNCTION DDC_TROE(P_RATIO, F, DPRDC, TMP, RNI) 
+REAL(EB), INTENT(IN) :: P_RATIO, F, DPRDC, TMP
 INTEGER, INTENT(IN) :: RNI
 REAL(EB) :: LOGPR, LOGTEN, LOGFCENT, C, N, DLOGPRDC, DPARENTDC
 TYPE(REACTION_TYPE), POINTER :: RN
 REAL(EB), PARAMETER :: D=0.14_EB
 
 RN => REACTION(RNI)
-LOGPR = LOG10(MAX(PR,  TWO_EPSILON_EB))
+LOGPR = LOG10(MAX(P_RATIO,  TWO_EPSILON_EB))
 LOGTEN = LOG(10.0)
 IF (RN%T2_TROE <-1.E20_EB) THEN
    LOGFCENT = LOG10(MAX((1 - RN%A_TROE)*EXP(-TMP*RN%RT3_TROE) + &
@@ -720,7 +722,7 @@ ELSE
               RN%A_TROE*EXP(-TMP*RN%RT1_TROE) + EXP(-RN%T2_TROE/TMP),TWO_EPSILON_EB))
 ENDIF
 
-DLOGPRDC = DPRDC/PR/LOGTEN;
+DLOGPRDC = DPRDC/P_RATIO/LOGTEN;
 C = -0.4_EB - 0.67_EB*LOGFCENT
 N = 0.75_EB - 1.27_EB*LOGFCENT
 
@@ -734,20 +736,20 @@ END FUNCTION DDC_TROE
 
 
 !> \brief Calculate derivative of TROE function w.r.t temperature  
-!> \param PR is the pressure ratio.
+!> \param P_RATIO is the pressure ratio.
 !> \param F is the falloff function value.
 !> \param DPRDT is the derivative of TROE function w.r.t temperature.
 !> \param TMP is the current temperature.
 !> \param RNI is the reaction index
-REAL(EB) FUNCTION DDTMP_TROE(PR, F, DPRDT, TMP, RNI) 
-REAL(EB), INTENT(IN) :: PR, F, DPRDT, TMP
+REAL(EB) FUNCTION DDTMP_TROE(P_RATIO, F, DPRDT, TMP, RNI) 
+REAL(EB), INTENT(IN) :: P_RATIO, F, DPRDT, TMP
 INTEGER, INTENT(IN) :: RNI
 REAL(EB) :: FCENT, LOGPR, LOGTEN, LOGFCENT, DFCENTDT, C, N, DCDT, DNDT, DPARENTDT, DLOGFCENTDT, DLOGPRDT
 TYPE(REACTION_TYPE), POINTER :: RN
 REAL(EB), PARAMETER :: D=0.14_EB
 
 RN => REACTION(RNI)
-LOGPR = LOG10(MAX(PR, TWO_EPSILON_EB));
+LOGPR = LOG10(MAX(P_RATIO, TWO_EPSILON_EB));
 LOGTEN = LOG(10.0);
 IF (RN%T2_TROE <-1.E20_EB) THEN
    FCENT = MAX((1 - RN%A_TROE)*EXP(-TMP*RN%RT3_TROE) + &
@@ -766,7 +768,7 @@ C = -0.4_EB - 0.67_EB*LOGFCENT
 N = 0.75_EB - 1.27_EB*LOGFCENT
 DCDT = -0.67*DLOGFCENTDT
 DNDT = -1.27*DLOGFCENTDT
-DLOGPRDT = DPRDT/PR/LOGTEN
+DLOGPRDT = DPRDT/P_RATIO/LOGTEN
 
 DPARENTDT = 2.0*(LOGPR + C)/((N - D*(LOGPR + C))**2)* &
    ((DLOGPRDT + DCDT) - (LOGPR + C)*(DNDT - D*(DLOGPRDT + DCDT))/(N - D*(LOGPR + C)))
@@ -779,11 +781,12 @@ END FUNCTION DDTMP_TROE
 
 
 !> \brief cvode interface for ODE integrator. Call sundials cvode in serial mode.
-!> \param CC species mass fraction array
-!> \param TMP_IN is the temperature
+!> \param CC species concentration (kmol/m3) array
+!> \param ZZ_0 initial species mass fraction array (of the unbuned zone),needed for mixing+chem
+!> \param TMP_IN is the temperature of the mixed zone (For DNS it is cell temp)
 !> \param TMP_UNMIX is the unmix zone temperature
 !> \param PR_IN is the pressure
-!> \param ZETA0 is the initial unmixed fraction
+!> \param ZETA0 is the initial unmixed fraction 
 !> \param TAU_MIX is Mixing timescale
 !> \param CELL_MASS total mass of the cell (mixed + unmixed)
 !> \param TCUR is the start time in seconds

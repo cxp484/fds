@@ -28,6 +28,7 @@ TYPE STORAGE_TYPE
    INTEGER :: N_ITEMS_DIM=0                          !< Dimension of 1-D arrays ITEM_INDEX and SURF_INDEX
    INTEGER, ALLOCATABLE, DIMENSION(:) :: ITEM_INDEX  !< Array of indices of the WALL cells, CFACEs, or PARTICLEs
    INTEGER, ALLOCATABLE, DIMENSION(:) :: SURF_INDEX  !< Array of SURF indices of the WALL cells, CFACEs, or PARTICLEs
+   LOGICAL, ALLOCATABLE, DIMENSION(:) :: SAVE_FLAG   !< Array of logical parameters to indicate whether the entry is needed
    INTEGER :: N_REALS_DIM=0                          !< Dimension of the array REALS
    INTEGER :: N_INTEGERS_DIM=0                       !< Dimension of the array INTEGERS
    INTEGER :: N_LOGICALS_DIM=0                       !< Dimension of the array LOGICALS
@@ -240,6 +241,7 @@ TYPE BOUNDARY_ONE_D_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: LAYER_THICKNESS     !< (1:N_LAYERS) Thickness of layer (m)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: LAYER_THICKNESS_OLD !< (1:N_LAYERS) Thickness of layer (m) at last remesh
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: MIN_LAYER_THICKNESS !< (1:N_LAYERS) Minimum thickness of layer (m)
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: MIN_LAYER_MASS      !< (1:N_LAYERS) Layer mass for removal (m)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: MIN_DIFFUSIVITY     !< (1:N_LAYERS) Min diffusivity of all matls in layer (m2/s)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: DDSUM               !< Scaling factor to get minimum cell size
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: SMALLEST_CELL_SIZE  !< Minimum cell size (m)
@@ -320,6 +322,7 @@ TYPE BOUNDARY_PROP1_TYPE
    REAL(EB) :: RHO_G                 !< Gas density in near wall cell (kg/m3)
    REAL(EB) :: RDN=1._EB             !< \f$ 1/ \delta n \f$ at the surface (1/m)
    REAL(EB) :: K_G=0.025_EB          !< Thermal conductivity of gas in adjacent gas phase cell near wall
+   REAL(EB) :: M_DOT_LAYER_PP=0._EB  !< Mass of a layer removed in kg used to update OB%MASS
    REAL(EB) :: Q_DOT_G_PP=0._EB      !< Heat release rate per unit area (W/m2)
    REAL(EB) :: Q_DOT_O2_PP=0._EB     !< Heat release rate per unit area (W/m2) due to oxygen consumption
    REAL(EB) :: Q_CONDENSE=0._EB      !< Heat release rate per unit area (W/m2) due to gas condensation
@@ -921,6 +924,7 @@ TYPE SURFACE_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: MASS_FRACTION,MASS_FLUX,DDSUM,SMALLEST_CELL_SIZE,SWELL_RATIO
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: REFERENCE_HEAT_FLUX !< Reference flux for the flux scaling pyrolysis model (kW/m2)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: SPYRO_TH_FACTOR     !< Thickness scaling factor for the flux scaling pyrolysis model
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: MIN_LAYER_MASS      !< Initial mass in each layer
 
    TYPE(RAMP_ID_TYPE),  ALLOCATABLE, DIMENSION(:) :: RAMP
    INTEGER, DIMENSION(3) :: RGB
@@ -937,6 +941,7 @@ TYPE SURFACE_TYPE
    INTEGER :: N_CONE_CURVES=0 !< Total number of time vs. heat release rate curves specified for the S-pyro model
    INTEGER :: N_MATL          !< Total number of unique materials over all layers
    INTEGER :: NODE_INDEX=0    !< Ductnode index
+   INTEGER :: I_GRAD = 1      !< Geometry factor for volume
    INTEGER, DIMENSION(30) :: ONE_D_REALS_ARRAY_SIZE=0,ONE_D_INTEGERS_ARRAY_SIZE=0,ONE_D_LOGICALS_ARRAY_SIZE=0
    INTEGER, ALLOCATABLE, DIMENSION(:) :: N_LAYER_CELLS      !< Number of wall cells per material layer
    INTEGER, ALLOCATABLE, DIMENSION(:) :: LAYER_INDEX        !< The layer each wall cell belongs to
@@ -963,7 +968,8 @@ TYPE SURFACE_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: CELL_SIZE           !< Specified constant cell size (m)
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: STRETCH_FACTOR
    REAL(EB), DIMENSION(MAX_LAYERS) :: LAYER_DENSITY,&
-                                      MOISTURE_CONTENT,SURFACE_VOLUME_RATIO,PACKING_RATIO,KAPPA_S=-1._EB,RENODE_DELTA_T
+        MOISTURE_CONTENT,SURFACE_VOLUME_RATIO,PACKING_RATIO,KAPPA_S=-1._EB,RENODE_DELTA_T
+   REAL(EB), DIMENSION(MAX_LAYERS) :: DELAMINATION_TMP,DELAMINATION_DENSITY !< Temp. and density criteria for layer delam.
    REAL(EB), DIMENSION(MAX_LAYERS,MAX_MATERIALS) :: DENSITY_ADJUST_FACTOR=1._EB,RHO_S
    CHARACTER(LABEL_LENGTH), ALLOCATABLE, DIMENSION(:) :: MATL_NAME
    CHARACTER(LABEL_LENGTH), DIMENSION(MAX_LAYERS,MAX_MATERIALS) :: MATL_ID

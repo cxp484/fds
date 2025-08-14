@@ -2809,8 +2809,8 @@ IF (SIM_MODE/=DNS_MODE) THEN
          END SELECT
       ENDIF
    ENDDO
-   WRITE(LU_OUTPUT,'(A,F8.2)')   '   Turbulent Prandtl Number:     ',PR
-   WRITE(LU_OUTPUT,'(A,F8.2)')   '   Turbulent Schmidt Number:     ',SC
+   WRITE(LU_OUTPUT,'(A,F8.2)')   '   Turbulent Prandtl Number:     ',PR_T
+   WRITE(LU_OUTPUT,'(A,F8.2)')   '   Turbulent Schmidt Number:     ',SC_T
    IF (ANY(SPECIES_MIXTURE(:)%SC_T_USER>0._EB)) &
         WRITE(LU_OUTPUT,'(A)')   '   Differential turbulent transport specified, see Tracked Species Information'
 
@@ -4296,13 +4296,16 @@ ENDDO
 QUANTITY => WORK3
 
 ISOF_LOOP: DO N=1,N_ISOF
+
    IS => ISOSURFACE_FILE(N)
    ERROR = 0
    ISOOFFSET = 1
    HAVE_ISO2 = 0
 
    ! Fill up the dummy array QUANTITY with the appropriate gas phase output
+
    IF (IS%DEBUG) THEN
+
       ISO_CENX = REAL((XS_MIN + XF_MAX)/2.0_EB, FB)
       ISO_CENY = REAL((YS_MIN + YF_MAX)/2.0_EB, FB)
       ISO_CENZ = REAL((ZS_MIN + ZF_MAX)/2.0_EB, FB)
@@ -4313,7 +4316,9 @@ ISOF_LOOP: DO N=1,N_ISOF
             ENDDO
          ENDDO
       ENDDO
+
    ELSE
+
       DO K=0,KBP1
          DO J=0,JBP1
             DO I=0,IBP1
@@ -4322,39 +4327,34 @@ ISOF_LOOP: DO N=1,N_ISOF
          ENDDO
       ENDDO
 
-   ! Mirror QUANTITY into ghost cells
-
-      QUANTITY(0   ,0:JBP1,0:KBP1) = QUANTITY(1   ,0:JBP1,0:KBP1)
-      QUANTITY(IBP1,0:JBP1,0:KBP1) = QUANTITY(IBAR,0:JBP1,0:KBP1)
-      QUANTITY(0:IBP1,0   ,0:KBP1) = QUANTITY(0:IBP1,1   ,0:KBP1)
-      QUANTITY(0:IBP1,JBP1,0:KBP1) = QUANTITY(0:IBP1,JBAR,0:KBP1)
-      QUANTITY(0:IBP1,0:JBP1,0   ) = QUANTITY(0:IBP1,0:JBP1,1   )
-      QUANTITY(0:IBP1,0:JBP1,KBP1) = QUANTITY(0:IBP1,0:JBP1,KBAR)
       CALL FILL_EDGES(QUANTITY)
 
-   ! Average the data (which is assumed to be cell-centered) at cell corners
+      ! Average the data (which is assumed to be cell-centered) at cell corners
 
       DO K=0,KBAR
          DO J=0,JBAR
             DO I=0,IBAR
                QQ(I,J,K,1) = REAL(S(I,J,K)*(QUANTITY(I,J,K)*B(I,J,K)        + QUANTITY(I+1,J,K)*B(I+1,J,K)+ &
-                                                  QUANTITY(I,J,K+1)*B(I,J,K+1)    + QUANTITY(I+1,J,K+1)*B(I+1,J,K+1)+ &
-                                                  QUANTITY(I,J+1,K)*B(I,J+1,K)    + QUANTITY(I+1,J+1,K)*B(I+1,J+1,K)+ &
-                                                  QUANTITY(I,J+1,K+1)*B(I,J+1,K+1)+ QUANTITY(I+1,J+1,K+1)*B(I+1,J+1,K+1)),FB)
+                                            QUANTITY(I,J,K+1)*B(I,J,K+1)    + QUANTITY(I+1,J,K+1)*B(I+1,J,K+1)+ &
+                                            QUANTITY(I,J+1,K)*B(I,J+1,K)    + QUANTITY(I+1,J+1,K)*B(I+1,J+1,K)+ &
+                                            QUANTITY(I,J+1,K+1)*B(I,J+1,K+1)+ QUANTITY(I+1,J+1,K+1)*B(I+1,J+1,K+1)),FB)
             ENDDO
          ENDDO
       ENDDO
+
    ENDIF
 
    ! Fill up QUANTITY2 and QQ2 arrays if the isosurface is colored with a second quantity
 
    INDEX2_IF: IF ( IS%INDEX2 /= -1 ) THEN
+
       HAVE_ISO2 = 1
       QUANTITY2 => WORK4
 
       ! Fill up the dummy array QUANTITY2 with the appropriate gas phase output
 
       IF (IS%DEBUG) THEN
+
          DO K=0,KBAR+1
             IF (K.EQ.KBAR+1) THEN
                ZZ = 2.0_FB*ZPLT(KBAR) - ZPLT(KBAR-1)
@@ -4367,7 +4367,9 @@ ISOF_LOOP: DO N=1,N_ISOF
                ENDDO
             ENDDO
          ENDDO
+
       ELSE
+
          DO K=0,KBP1
             DO J=0,JBP1
                DO I=0,IBP1
@@ -4376,17 +4378,9 @@ ISOF_LOOP: DO N=1,N_ISOF
             ENDDO
          ENDDO
 
-      ! Mirror QUANTITY into ghost cells
-
-         QUANTITY2(0   ,0:JBP1,0:KBP1) = QUANTITY2(1   ,0:JBP1,0:KBP1)
-         QUANTITY2(IBP1,0:JBP1,0:KBP1) = QUANTITY2(IBAR,0:JBP1,0:KBP1)
-         QUANTITY2(0:IBP1,0   ,0:KBP1) = QUANTITY2(0:IBP1,1   ,0:KBP1)
-         QUANTITY2(0:IBP1,JBP1,0:KBP1) = QUANTITY2(0:IBP1,JBAR,0:KBP1)
-         QUANTITY2(0:IBP1,0:JBP1,0   ) = QUANTITY2(0:IBP1,0:JBP1,1   )
-         QUANTITY2(0:IBP1,0:JBP1,KBP1) = QUANTITY2(0:IBP1,0:JBP1,KBAR)
          CALL FILL_EDGES(QUANTITY2)
 
-      ! Average the data (which is assumed to be cell-centered) at cell corners
+         ! Average the data (which is assumed to be cell-centered) at cell corners
 
          DO KK=0,KBAR+1
             K = MIN(KK, KBAR)
@@ -4401,6 +4395,7 @@ ISOF_LOOP: DO N=1,N_ISOF
                ENDDO
             ENDDO
          ENDDO
+
       ENDIF
 
    ENDIF INDEX2_IF
@@ -7291,6 +7286,7 @@ END SUBROUTINE UPDATE_DEVICES_2
 !> \param IND2 Index of the sometimes needed second output quantity
 !> \param Y_INDEX Index of the primitive gas species
 !> \param Z_INDEX Index of the gas species mixture
+!> \param ELEM_INDX Index of the chemical element
 !> \param PART_INDEX Index of the Lagrangian particle class
 !> \param VELO_INDEX Index of the velocity component, x=1, y=2, z=3
 !> \param PIPE_INDEX Index of the pipe branch
@@ -7522,9 +7518,7 @@ IND_SELECT: SELECT CASE(IND)
    CASE(37)  ! DIFFUSIVITY
       SELECT CASE (SIM_MODE)
          CASE DEFAULT
-            GAS_PHASE_OUTPUT_RES = MU(II,JJ,KK)*RSC/RHO(II,JJ,KK)
-         CASE (LES_MODE)
-            GAS_PHASE_OUTPUT_RES = (MU(II,JJ,KK)-MU_DNS(II,JJ,KK)*RSC)/RHO(II,JJ,KK)
+            GAS_PHASE_OUTPUT_RES = MU(II,JJ,KK)*RSC_T/RHO(II,JJ,KK)
          CASE (DNS_MODE)
             D_Z_N = D_Z(:,Z_INDEX)
             CALL INTERPOLATE1D_UNIFORM(LBOUND(D_Z_N,1),D_Z_N,TMP(II,JJ,KK),GAS_PHASE_OUTPUT_RES)
@@ -7645,7 +7639,7 @@ IND_SELECT: SELECT CASE(IND)
       ELSE
          R_DX2 = RDX(II)**2 + RDY(JJ)**2 + RDZ(KK)**2
       ENDIF
-      GAS_PHASE_OUTPUT_RES = DT*2._EB*R_DX2*MAX(D_Z_MAX(II,JJ,KK),MAX(RPR,RSC)*MU(II,JJ,KK)/RHO(II,JJ,KK))
+      GAS_PHASE_OUTPUT_RES = DT*2._EB*R_DX2*MAX(D_Z_MAX(II,JJ,KK),MAX(RPR_T,RSC_T)*MU(II,JJ,KK)/RHO(II,JJ,KK))
 
    CASE(72)  ! CFL MAX
       GAS_PHASE_OUTPUT_RES = CFL
