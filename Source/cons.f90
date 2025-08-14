@@ -194,6 +194,7 @@ LOGICAL :: SUPPRESSION=.TRUE.               !< Indicates if gas-phase combustion
 LOGICAL :: ACCUMULATE_WATER=.FALSE.         !< Indicates that integrated liquid outputs are specified
 LOGICAL :: WRITE_XYZ=.FALSE.                !< Indicates that a Plot3D geometry file is specified by user
 LOGICAL :: CHECK_POISSON=.FALSE.            !< Check the accuracy of the Poisson solver
+LOGICAL :: WRITE_PARCSRPCG_MATRIX=.FALSE.   !< If true, write out matrix for UGLMAT HYPRE solver
 LOGICAL :: TWO_D=.FALSE.                    !< Perform a 2-D simulation
 LOGICAL :: SETUP_ONLY=.FALSE.               !< Indicates that the calculation should be stopped before time-stepping
 LOGICAL :: CHECK_MESH_ALIGNMENT=.FALSE.     !< Indicates that the user wants to check the mesh alignment and then stop
@@ -561,7 +562,7 @@ REAL(EB) :: ALIGNMENT_TOLERANCE=0.001_EB      !< Maximum ratio of sizes of abutt
 ! Logical units and output file names
 
 INTEGER                              :: LU_ERR=ERROR_UNIT,LU_END=2,LU_GIT=3,LU_SMV=4,LU_INPUT=5,LU_OUTPUT=6,LU_STOP=7,LU_CPU=8,&
-                                        LU_CATF=9,LU_RDIR=10,LU_GDIR=11,LU_SETCC=12,LU_BINGEOM=13
+                                        LU_CATF=9,LU_RDIR=10,LU_GDIR=11,LU_SETCC=12,LU_BINGEOM=13,LU_PARCSRPCG_MATRIX=14
 INTEGER                              :: LU_MASS,LU_HRR,LU_STEPS,LU_NOTREADY,LU_VELOCITY_ERROR,LU_CFL,LU_LINE=-1,LU_CUTCELL, &
                                         LU_CVODE_SUBSTEPS
 INTEGER                              :: LU_HISTOGRAM,LU_HVAC
@@ -908,6 +909,7 @@ REAL(EB) :: ZETA_ARTIFICAL_MIN_LIMIT=0.99_EB
 REAL(EB) :: ZETA_ARTIFICAL_MAX_LIMIT=0.9999_EB
 REAL(EB) :: ZETA_FIRST_STEP_DIV=10._EB
 INTEGER  :: CVODE_MAX_TRY=4
+LOGICAL  :: IS_EXPONENT_LT_1 = .FALSE.
 
 ! FOR WRITING CVODE SUBSTEPS
 LOGICAL  :: WRITE_CVODE_SUBSTEPS = .FALSE.
@@ -918,17 +920,11 @@ INTEGER :: TOTAL_SUBSTEPS_TAKEN
 REAL(EB) :: FLAME_THICK_FACTOR=1.0_EB
 
 ! Equivalence ratio for Ignition and Extinction zones.
-REAL(EB) :: MIN_IGN_ZN_EQUIV_RATIO=1.E-2_EB
-REAL(EB) :: MAX_IGN_ZN_EQUIV_RATIO=100.0_EB
+REAL(EB) :: MIN_IGN_ZN_EQUIV_RATIO=1.E-1_EB
+REAL(EB) :: MAX_IGN_ZN_EQUIV_RATIO=10.0_EB
 
 ! IGNITION ZONES (mainly for premixed flame)
 INTEGER :: N_IGNITION_ZONES = 0
 TYPE(IGNITION_ZONE_TYPE), DIMENSION(MAX_IGNITION_ZONES) :: IGNITION_ZONES      !< Coordinates of ignition zones used for detailed chemistry
-
-! Mixed zones property (mainly for diffussion flames)
-LOGICAL  :: MIXED_ZN_TMP_FLAG = .TRUE.
-REAL(EB) :: MIXED_ZN_TMP=726.85_EB !C
-REAL(EB) :: MIN_MIX_ZN_EQUIV_RATIO=1.E-1_EB
-REAL(EB) :: MAX_MIX_ZN_EQUIV_RATIO=10.0_EB
 
 END MODULE CHEMCONS
