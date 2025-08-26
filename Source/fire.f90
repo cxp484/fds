@@ -174,6 +174,8 @@ DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
    MESHES(NM)%NCHEM_ACTIVE_CC=NCHEM_ACTIVE_CC
 ENDDO
 
+
+
 !------
 !STEP2: Solve chemistry by distributing the chemistry load accross all MPI processes for parallel runs.
 !       For 1 MPI process (serial) distribution is not needed.
@@ -359,8 +361,8 @@ SUBROUTINE CHECK_CHEMICALLY_ACTIVE_STATE (ZZ_GET, TMP, I, J , K, IS_CUT_CELL, CH
 USE DEVICE_VARIABLES, ONLY: DEVICE
 USE PHYSICAL_FUNCTIONS, ONLY: IS_REALIZABLE, CALC_EQUIV_RATIO
 USE COMPLEX_GEOMETRY, ONLY : CC_CGSC, CC_GASPHASE
-USE CHEMCONS, ONLY: EQUIV_RATIO_CHECK, MIN_EQUIV_RATIO, MAX_EQUIV_RATIO, N_IGNITION_ZONES, IGNITION_ZONES, &
-                    MIN_IGN_ZN_EQUIV_RATIO, MAX_IGN_ZN_EQUIV_RATIO              
+USE CHEMCONS, ONLY: EQUIV_RATIO_CHECK, MIN_EQUIV_RATIO, MAX_EQUIV_RATIO, N_IGNITION_ZONES, IGNITION_ZONES
+                                  
 
 REAL(EB), INTENT(IN) :: ZZ_GET(1:N_TRACKED_SPECIES)
 REAL(EB), INTENT(IN) :: TMP
@@ -380,7 +382,6 @@ IF (CELL(CELL_INDEX(I,J,K))%SOLID) THEN
    CHEM_ACTIVE = .FALSE.
    RETURN
 ENDIF
-
 IF (CC_IBM .AND. .NOT. IS_CUT_CELL) THEN ! Check if cell is regular gas phase cell, if not return.
    IF (CCVAR(I,J,K,CC_CGSC) /= CC_GASPHASE) THEN
       CHEM_ACTIVE = .FALSE.
@@ -403,7 +404,7 @@ IF (.NOT.ALL(REACTION%FAST_CHEMISTRY)) THEN
                 ZC(K)>=IGNITION_ZONES(IZ)%Z1 .AND. ZC(K)<=IGNITION_ZONES(IZ)%Z2) THEN
                CALL CALC_EQUIV_RATIO(ZZ_GET(1:N_TRACKED_SPECIES), EQUIV)
                ! No need to solve for no fuel (phi < MIN ) case and only fuel (phi is rich > MAX) case.
-               IF (EQUIV .GT. MIN_IGN_ZN_EQUIV_RATIO .AND. EQUIV .LT. MAX_IGN_ZN_EQUIV_RATIO) THEN
+               IF (EQUIV .GT. MIN_EQUIV_RATIO .AND. EQUIV .LT. MAX_EQUIV_RATIO) THEN
                   IGN_ZN = IZ
                   EXIT
                ENDIF   
@@ -411,12 +412,20 @@ IF (.NOT.ALL(REACTION%FAST_CHEMISTRY)) THEN
          ENDDO
       ENDIF
    ENDIF   
-   IF (IGN_ZN .LE. 0 .AND. .NOT. TMP < FINITE_RATE_MIN_TEMP) THEN
+
+   IF (IGN_ZN .LE. 0 .AND. SIM_MODE .NE. DNS_MODE) THEN ! LES and other modes. Check equiv ratio
+      CALL CALC_EQUIV_RATIO(ZZ_GET(1:N_TRACKED_SPECIES), EQUIV)
+      ! No need to solve for no fuel (phi < MIN ) case and only fuel (phi is rich > MAX) case.
+      IF (EQUIV .GT. MIN_EQUIV_RATIO .AND. EQUIV .LT. MAX_EQUIV_RATIO) THEN
+         LES_EQUIV_CHECK = .TRUE. ! Chemically active
+      ENDIF   
+   ENDIF
+
+   IF (IGN_ZN .LE. 0 .AND. .NOT. LES_EQUIV_CHECK .AND. TMP < FINITE_RATE_MIN_TEMP) THEN
       CHEM_ACTIVE = .FALSE.
       RETURN
    ENDIF
 ENDIF
-
 
 IF (CHECK_REALIZABILITY) THEN
    REALIZABLE=IS_REALIZABLE(ZZ_GET)
@@ -429,7 +438,6 @@ IF (CHECK_REALIZABILITY) THEN
       RETURN
    ENDIF
 ENDIF
-
 CALL CHECK_REACTION (ZZ_GET, DO_REACTION)
 IF (.NOT.DO_REACTION) THEN
    CHEM_ACTIVE = .FALSE.
@@ -444,7 +452,6 @@ IF (COMBUSTION_ODE_SOLVER==CVODE_SOLVER .AND. EQUIV_RATIO_CHECK) THEN
       RETURN
    ENDIF   
 ENDIF
-
 END SUBROUTINE CHECK_CHEMICALLY_ACTIVE_STATE
 
 
@@ -1046,7 +1053,7 @@ INTEGER, INTENT(IN) :: IGN_ZN
 
 REAL(EB) :: CC(N_TRACKED_SPECIES), CC_CHEM_TIME(N_TRACKED_SPECIES), ZZ_IN(N_TRACKED_SPECIES)
 REAL(EB) :: MW, RHO_IN, RHO_OUT, T1, T2, ZETA0, ZETA_IN_MOD, TMP_IN_MOD, TMP_OUT, &
-            CHEM_TIME, DT_MOD, ZETA_ARTF, ZETA_FINAL, ZETA_MAX_LIMIT, ZETA_MIN_LIMIT
+            CHEM_TIME, DT_MOD, ZETA_ARTF, ZETA_FINAL, ZETA_MAX_LIMIT, ZETA_MIN_LIMIT,AFT
 INTEGER :: NS, CVODE_CALL_OPTION
 LOGICAL :: WRITE_SUBSTEPS, CALL_CHEM_AGAIN
 
@@ -1057,9 +1064,13 @@ ZETA_IN_MOD = ZETA_IN
 TMP_IN_MOD = TMP_IN
 CALL_CHEM_AGAIN = .FALSE.
 
-
 IF(IGN_ZN > 0) THEN
    TMP_IN_MOD = MAX(TMP_IN, IGNITION_ZONES(IGN_ZN)%TMP)
+ELSE
+   IF (SIM_MODE .NE. DNS_MODE) THEN
+      CALL CALC_ADIABATIC_FLAME_TEMPERATURE(ZZ,TMP_IN, AFT)
+      TMP_IN_MOD = MAX(TMP_IN,AFT) ! TO DO: Ideal would be a equilibrium temperature based on ZZ(:) and TMP_IN
+   ENDIF   
 ENDIF
 ZETA_OUT = ZETA_IN_MOD*EXP(-DT/TAU_MIX)
 IF(ZETA_OUT > ZETA_ARTIFICAL_MAX_LIMIT) RETURN ! The mixing can be ignored due to large mixing time.
@@ -1079,9 +1090,8 @@ WHERE(CC<0._EB) CC=0._EB
 IF(ZETA_IN_MOD > ONE_M_EPS) THEN
    !With ZETA_IN =1 the CVODE ODE become too stiff to solve. Hence, performing negligible
    !artifical mixing based on a chemical time scale.
-   !1. First find a reasonable chemical time scale.
-   !2. Do cemistry on the chemical time scale
-   !3. Set the final zeta0 based on the chemical time
+   !1. Do cemistry and find a chemical time scale with a cvode call (one substep).
+   !2. Set the final zeta0 based on the chemical time
    T1 = 0._EB
    T2 = DT
    ZETA0 = 0._EB ! Assume completely mixed.
@@ -1093,13 +1103,14 @@ IF(ZETA_IN_MOD > ONE_M_EPS) THEN
    ! Check 1) too much artificial mixing (low zeta after first step) or 
    ! 2) too little mixing (high zeta after first step) to avoid steep problem in cvode.
    ZETA_ARTF = ZETA_IN_MOD*EXP(-CHEM_TIME/TAU_MIX) ! Zeta after CHEM_TIME
-   ZETA_FINAL = ZETA_IN_MOD*EXP(-DT/ZETA_FIRST_STEP_DIV/TAU_MIX) ! Zeta Final allowed in first chem time
+   ZETA_FINAL = ZETA_IN_MOD*EXP(-DT/ZETA_FIRST_STEP_DIV/TAU_MIX) ! Allowed final zeta after artifical mixing substep
    ZETA_MIN_LIMIT = MAX(ZETA_FINAL,ZETA_ARTIFICAL_MIN_LIMIT)
    ZETA_MAX_LIMIT = MAX(ZETA_FINAL,ZETA_ARTIFICAL_MAX_LIMIT)
    IF (ZETA_ARTF < ZETA_MIN_LIMIT) THEN ! Limit too much artifical mixing to ZETA_ARTIFICAL_MAX_LIMIT.
       T2 = TAU_MIX*(LOG(ZETA_IN_MOD) - LOG(ZETA_MIN_LIMIT))
       CALL_CHEM_AGAIN = .TRUE.
-   ELSEIF (ZETA_ARTF > ZETA_MAX_LIMIT) THEN ! Check too liitle mixing (zeta not too close to 1 for cvode in subsequent calls)
+   ELSEIF (ZETA_ARTF > ZETA_MAX_LIMIT) THEN ! Check too liitle mixing, then make little more mixing such 
+                                            ! that cvode is not stiff in subsequent calls.
       T2 = TAU_MIX*(LOG(ZETA_IN_MOD) - LOG(ZETA_MAX_LIMIT))
       CALL_CHEM_AGAIN = .TRUE.
    ENDIF
@@ -1147,6 +1158,85 @@ ZZ = ZZ/(RHO_OUT+TWO_EPSILON_EB)
 
 END SUBROUTINE CVODE
 #endif
+
+!> \brief Constant pressure adiabatic flame temperature calculation
+!> \param ZZ species mass fraction array
+!> \param TMP_IN is the temperature
+!> \param AFT is the adiabatic flame temperature (output)
+SUBROUTINE CALC_ADIABATIC_FLAME_TEMPERATURE(ZZ,TMP_IN,AFT)
+USE PHYSICAL_FUNCTIONS, ONLY: CALC_EQUIV_RATIO,GET_ENTHALPY,GET_SPECIFIC_HEAT,GET_TEMPERATURE
+USE CHEMCONS, ONLY: I_FUEL
+REAL(EB), INTENT(INOUT) :: ZZ(N_TRACKED_SPECIES)
+REAL(EB), INTENT(IN) :: TMP_IN
+REAL(EB), INTENT(OUT) :: AFT
+REAL(EB) :: ZZ_REAC(N_TRACKED_SPECIES),ZZ_PROD(N_TRACKED_SPECIES)
+REAL(EB) :: HS_IN
+
+IF (I_FUEL <= 0) THEN ! No FUEL_ID_FOR_AFT specified. 
+   AFT = TMP_IN
+   RETURN
+ENDIF
+CALL CALC_AFT_REAC_AND_PROD(ZZ,ZZ_REAC,ZZ_PROD)
+CALL GET_ENTHALPY(ZZ,HS_IN,TMP_IN)
+AFT = TMP_IN
+CALL GET_TEMPERATURE(AFT,HS_IN,ZZ_PROD)
+
+END SUBROUTINE CALC_ADIABATIC_FLAME_TEMPERATURE
+
+! Calculate Reactants and products
+SUBROUTINE CALC_AFT_REAC_AND_PROD(ZZ,ZZ_REAC,ZZ_PROD)
+USE PHYSICAL_FUNCTIONS, ONLY: CALC_EQUIV_RATIO
+USE CHEMCONS, ONLY: I_FUEL,I_CO2,I_H2O,I_O2,I_N2
+REAL(EB), INTENT(IN) :: ZZ(N_TRACKED_SPECIES)
+REAL(EB), INTENT(OUT) :: ZZ_REAC(N_TRACKED_SPECIES),ZZ_PROD(N_TRACKED_SPECIES)
+REAL(EB) :: EQUIV, X,Y,Z,A,B,C,D,E, SUM_ZZ
+
+
+CALL CALC_EQUIV_RATIO(ZZ(1:N_TRACKED_SPECIES), EQUIV)
+
+! Based on CxHyOz + a(O2+3.76N2) = bCO2 + cH2O + dCxHyOz + eO2 + 3.76aN2
+X=SPECIES_MIXTURE(I_FUEL)%ATOMS(6) !C
+Y=SPECIES_MIXTURE(I_FUEL)%ATOMS(1) !H
+Z=SPECIES_MIXTURE(I_FUEL)%ATOMS(8) !O
+A=0.5_EB*((2.0_EB*X+0.5_EB*Y)/EQUIV -Z)
+IF(ABS(EQUIV - 1.0_EB) <1E-3_EB) THEN ! Stoich
+   B = X
+   C = 0.5_EB*Y
+   D = 0._EB ! No fuel
+   E = 0._EB ! No O2
+ELSEIF (EQUIV > 1) THEN ! Rich
+   D = (2.0_EB*X+0.5_EB*Y-2.0_EB*A-Z)/(2.0_EB*X+0.5_EB*Y-Z)
+   B = (1._EB-D)*X
+   C = 0.5_EB*(1._EB-D)*Y
+   E = 0._EB ! No O2
+ELSE !EQUIV < 1, Lean
+   B = X
+   C = 0.5_EB*Y
+   D = 0._EB ! No fuel
+   E = A + 0.5*Z - B - 0.5_EB*C
+ENDIF
+
+! Setup reactants
+ZZ_REAC = 0.0_EB
+ZZ_REAC(I_FUEL)=1._EB*SPECIES_MIXTURE(I_FUEL)%MW
+ZZ_REAC(I_O2)=A*SPECIES_MIXTURE(I_O2)%MW
+ZZ_REAC(I_N2)=3.76*A*SPECIES_MIXTURE(I_N2)%MW
+SUM_ZZ=SUM(ZZ_REAC)
+ZZ_REAC = ZZ_REAC/SUM_ZZ
+
+! Setup products
+ZZ_PROD = 0.0_EB
+ZZ_PROD(I_CO2)=B*SPECIES_MIXTURE(I_CO2)%MW
+ZZ_PROD(I_H2O)=C*SPECIES_MIXTURE(I_H2O)%MW
+ZZ_PROD(I_FUEL)=D*SPECIES_MIXTURE(I_FUEL)%MW
+ZZ_PROD(I_O2)=E*SPECIES_MIXTURE(I_O2)%MW
+ZZ_PROD(I_N2)=3.76_EB*A*SPECIES_MIXTURE(I_N2)%MW
+SUM_ZZ=SUM(ZZ_PROD)
+ZZ_PROD = ZZ_PROD/SUM_ZZ
+
+
+END SUBROUTINE CALC_AFT_REAC_AND_PROD
+
 
 SUBROUTINE CHECK_AUTO_IGNITION(EXTINCT,TMP_IN,AIT,IIC,JJC,KKC,REAC_INDEX)
 
