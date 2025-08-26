@@ -1157,7 +1157,6 @@ RHO_OUT = SUM(ZZ)
 ZZ = ZZ/(RHO_OUT+TWO_EPSILON_EB)
 
 END SUBROUTINE CVODE
-#endif
 
 !> \brief Constant pressure adiabatic flame temperature calculation
 !> \param ZZ species mass fraction array
@@ -1236,7 +1235,7 @@ ZZ_PROD = ZZ_PROD/SUM_ZZ
 
 
 END SUBROUTINE CALC_AFT_REAC_AND_PROD
-
+#endif
 
 SUBROUTINE CHECK_AUTO_IGNITION(EXTINCT,TMP_IN,AIT,IIC,JJC,KKC,REAC_INDEX)
 
