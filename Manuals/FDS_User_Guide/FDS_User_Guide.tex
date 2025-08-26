@@ -2837,7 +2837,7 @@ Data from up to ten experiments can be specified by specifying arrays for \ct{RE
 There are other optional parameters which can be used to adjust the model behavior, which are described below.
 
 \begin{itemize}
-\item \ct{MAXIMUM_SCALING_HEAT_FLUX} By default the model does not set an upper limit on the predicted heat flux used to scale the test data (Default 100,000 \unit{kW/m^2}).
+\item \ct{MAXIMUM_SCALING_HEAT_FLUX} The upper limit on the predicted heat flux used to scale the test data (Default 1500 \unit{kW/m^2}).
 \item \ct{MINIMUM_SCALING_HEAT_FLUX} By default the model does not set a lower limit on the predicted heat flux used to scale the test data. Setting a lower bound to the flux used for scaling may help the model predictions in some cases such as weakly burning sources on coarse grids which may have poorly resolved heat feedback (Default 0 \unit{kW/m^2}).
 \item \ct{REFERENCE_HEAT_FLUX_TIME_INTERVAL} The instantaneous heat feedback in FDS can vary greatly from time step to time step. In an actual fire the burning rate is tied to the sample temperature, and thermal inertia means the burning rate changes more slowly than then instantaneous flux. This natural smoothing can be approximated by setting a smoothing window using \ct{REFERENCE_HEAT_FLUX_TIME_INTERVAL} in s (Default 1~s).
 \end{itemize}
@@ -9123,7 +9123,7 @@ Note that the heat flux has units of \unit{W/m^2}.  Thus, a velocity scale may b
 \section{Flux Limiters}
 \label{info:flux_limiters}
 
-FDS employs \emph{total variation diminishing} (TVD) schemes for scalar transport.  The default for VLES (FDS default \ct{SIMULATION_MODE}) is Superbee \cite{Roe:1986}, so chosen because this scheme does the best job preserving the scalar variance in highly turbulent flows with coarse grid resolution.  The default scheme for DNS and LES is CHARM \cite{Zhou:1995} because the gradient steepening used in Superbee forces a stair step pattern at high resolution, while CHARM is convergent.   A few other schemes (including Godunov and central differencing) are included for completeness; more details can be found in the Tech Guide \cite{FDS_Tech_Guide}.  Table \ref{tab:flux_limiters} below shows the character strings which may be used to invoke the various limiter schemes.
+FDS employs \emph{total variation diminishing} (TVD) schemes for scalar transport.  The default for VLES (FDS default \ct{SIMULATION_MODE}) is Superbee \cite{Roe:1986}, so chosen because this scheme does the best job preserving the scalar variance in highly turbulent flows with coarse grid resolution.  The default scheme for DNS and LES is CHARM \cite{Zhou:1995} because the gradient steepening used in Superbee forces a stair step pattern at high resolution, while CHARM is convergent.   Godunov and central differencing are included for completeness; more details can be found in the Tech Guide \cite{FDS_Tech_Guide}.  Table \ref{tab:flux_limiters} below shows the character strings which may be used to invoke the various limiter schemes.
 
 \begin{lstlisting}
 &MISC FLUX_LIMITER='GODUNOV' / ! invoke Godunov (first-order upwind scheme)
@@ -9140,9 +9140,7 @@ Scheme                              & \ct{FLUX_LIMITER} \\
 Central differencing                & \ct{'CENTRAL'}  \\
 Godunov                             & \ct{'GODUNOV'}  \\
 Superbee (VLES, SVLES default)      & \ct{'SUPERBEE'}  \\
-MINMOD                              & \ct{'MINMOD'}  \\
 CHARM (DNS, LES default)            & \ct{'CHARM'}  \\
-MP5                                 & \ct{'MP5'}  \\ \hline
 \end{tabular}
 \end{table}
 
@@ -10560,7 +10558,15 @@ Figure~\ref{fig:thermocouple_time_constant} shows the results of a simple test c
 \label{fig:thermocouple_time_constant}
 \end{figure}
 
+\subsection{Bi-Directional Probe}
+\label{info:bidir_probe}
 
+The output quantity \ct{BI-DIRECTIONAL PROBE} is the velocity of a modeled bi-directional probe. A bi-directional probe uses the following equation:
+\be
+C \sqrt{\frac{2 \Delta P}{\rho}}
+\label{BDP}
+\ee
+where $C$ is a calibration constant (default value is 0.93), $\Delta P$ is the pressure difference across the probe, and $\rho$ is the gas density at the probe. In a typical experiment, the gas density is computed assuming standard pressure (101325 Pa), the molecular weight of air (28.8 g/mol), and the temperature as measured by a thermocouple near the probe. Bi-directional probes have biases due to both the Reynolds number (based on the probe diameter) of the flow and the angle of the flow with respect to the probe axis. This model accounts for those sensitivities and the impact of density differences from varied molecular weight at the probe. The orientation of the probe can be specified with either \ct{IOR} or \ct{ORIENTATION} on \ct{DEVC}. A probe with \ct{IOR}=-1 would have a positive velocity output when the flow is in the negative x direction. Parameters for the probe can be specified with a \ct{PROP_ID} on the \ct {DEVC}. The calibration constant and the probe diameter (default of 0.0254 m) can be set respectively with \ct{CALIBRATION_CONSTANT} and \ct{PROBE_DIAMETER} on \ct{PROP}. If the probe temperature is an aspirated thermocouple or other measurement not sensitive to the radiative environment, then set \ct{TC=F} on \ct{PROP}.
 
 \subsection{Volume Flow}
 \label{info:volume_flow}
@@ -11728,6 +11734,7 @@ Table~\ref{tab:deviceoutputquantities} below lists output quantities associated 
 \endhead
 \ct{ACTUATED SPRINKLERS}                       & Section~\ref{info:TIMING}                     &                & D            \\ \hline
 \ct{ASPIRATION}                                & Section~\ref{info:aspiration_detector}        & \%/m           & D            \\ \hline
+\ct{BI-DIRECTIONAL PROBE}                      & Section~\ref{info:bidir_probe}                & m/s            & D            \\ \hline
 \ct{CHAMBER OBSCURATION}                       & Section~\ref{info:smoke_detector}             & \%/m           & D            \\ \hline
 \ct{CELL INDEX I}                              & Mesh cell index in x                          &                & D,S          \\ \hline
 \ct{CELL INDEX J}                              & Mesh cell index in y                          &                & D,S          \\ \hline
@@ -11912,7 +11919,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 % ignorenamelistkw: /ISOF/DEBUG
 % ignorenamelistkw: /MISC/PERIODIC_TEST, /MISC/POSITIVE_ERROR_TEST, /MISC/PROFILING, /MISC/RADIATION
 % ignorenamelistkw: /MISC/STRATIFICATION, /MISC/SUPPRESSION, /MISC/UVW_FILE, /MISC/TENSOR_DIFFUSIVITY
-% ignorenamelistkw: /MISC/CC_IBM, /MISC/CCVOL_LINK, /MISC/TEST_NEW_CHAR_MODEL, /MISC/FLUX_LIMITER_MW_CORRECTION
+% ignorenamelistkw: /MISC/CC_IBM, /MISC/CCVOL_LINK, /MISC/TEST_NEW_CHAR_MODEL, /MISC/PR, /MISC/SC
 % ignorenamelistkw: /PART/DEBUG, /PART/EMBER_SNAG_FACTOR
 % ignorenamelistkw: /PRES/WRITE_PARCSRPCG_MATRIX
 % ignorenamelistkw: /REAC/C, /REAC/H, /REAC/O, /REAC/N, /REAC/FORMULA
@@ -13173,6 +13180,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{ALPHA_E}                          & Real          & Section~\ref{info:smoke_detector}         &                       & 0.                   \\ \hline
 \ct{BETA_C}                           & Real          & Section~\ref{info:smoke_detector}         &                       & 1.                   \\ \hline
 \ct{BETA_E}                           & Real          & Section~\ref{info:smoke_detector}         &                       & 1.                   \\ \hline
+\ct{CALIBRATION_CONSTANT}             & Real          & Section~\ref{info:bidir_probe}            &                       & 0.93                 \\ \hline
 \ct{CHARACTERISTIC_VELOCITY}          & Real          & Section~\ref{info:pressure_coefficient}   & m/s                   & 1.                   \\ \hline
 \ct{C_FACTOR}                         & Real          & Section~\ref{info:sprinklers}             & (m/s)$^{1/2}$         & 0.                   \\ \hline
 \ct{DENSITY}                           & Real          & Section~\ref{info:THERMOCOUPLE}           & kg/m$^3$              & 8908.                \\ \hline
@@ -13209,6 +13217,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{PDPA_RADIUS}                      & Real          & Section~\ref{PDPA}                        & m                     & 0.                   \\ \hline
 \ct{PDPA_START}                       & Real          & Section~\ref{PDPA}                        & s                     & 0.                   \\ \hline
 \ct{PRESSURE_RAMP}                    & Character     & Section~\ref{info:sprinklers}             &                       &                      \\ \hline
+\ct{PROBE_DIAMETER}                    & Real          & Section~\ref{info:bidir_probe}           & m                     &  0.0254              \\ \hline
 \ct{P0}                                & Real          & Section~\ref{info:velocity_patch}         & m/s                   &  0.                  \\ \hline
 \ct{PX(3)}                             & Real          & Section~\ref{info:velocity_patch}         & m/s                   &  0.                  \\ \hline
 \ct{PXX(3,3)}                          & Real          & Section~\ref{info:velocity_patch}         & m/s                   &  0.                  \\ \hline
@@ -13224,6 +13233,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{SPRAY_PATTERN_MU}                & Real          & Section~\ref{info:sprinklers}             & degrees               & 0.                   \\ \hline
 \ct{SPRAY_PATTERN_SHAPE}             & Character     & Section~\ref{info:sprinklers}             &                       & \ct{'GAUSSIAN'}     \\ \hline
 \ct{SPRAY_PATTERN_TABLE}             & Character     & Section~\ref{info:sprinklers}             &                       &                      \\ \hline
+\ct{TC}                               & Logical       & Section~\ref{info:bidir_probe}            &                       & \ct{T}               \\ \hline
 \ct{TIME_CONSTANT}                    & Real          & Section~\ref{info:THERMOCOUPLE}           & s                     &                      \\ \hline
 \ct{VELOCITY_COMPONENT}               & Integer       & Section~\ref{info:velocity_patch}         &                       &                      \\ \hline
 \ct{VIEW_ANGLE}                       & Real          & Section~\ref{info:heat_flux}              & degrees               & 180.                 \\ \hline
@@ -13620,7 +13630,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{MASS_TRANSFER_COEFFICIENT}                         & Real            & Section~\ref{info:liquid_fuels}           & m/s                 &                         \\ \hline
 \ct{MATL_ID(:,:)}                                       & Char.~Array     & Section~\ref{info:solid_pyrolysis}        &                     &                         \\ \hline
 \ct{MATL_MASS_FRACTION(:,:)}                           & Real Array      & Section~\ref{info:solid_pyrolysis}        &                     &                         \\ \hline
-\ct{MAXIMUM_SCALING_HEAT_FLUX}                        & Real            & Section~\ref{info:scaled_burning}         & \si{kW/m^2}         &                         \\ \hline
+\ct{MAXIMUM_SCALING_HEAT_FLUX}                        & Real            & Section~\ref{info:scaled_burning}         & \si{kW/m^2}         & 1500                     \\ \hline
 \ct{MCC_CONVERSION_FACTOR}                              & Real            & Section~\ref{info:TGA_DSC_MCC}            &                     & 1                       \\ \hline
 \ct{MINIMUM_BURNOUT_TIME}                              & Real            & Section~\ref{veg_burnout_time}            & s                   & 1000000                 \\ \hline
 \ct{MINIMUM_LAYER_THICKNESS}                           & Real            & Section~\ref{info:solid_phase_stability}  & m                   & 1.E-4                   \\ \hline
@@ -14255,6 +14265,7 @@ Keyword             & Type     & Description                      & Units       
 446  \> \ct{SURF REFERENCE_THICKNESS values must increase for each} \> Section~\ref{info:scaled_burning}  \\
      \> \ct{new group of REFERENCE_HEAT_FLUX.} \\
 447  \> \ct{RAMP ... used with REFERENCE_HEAT_FLUX must start at T = 0.} \> Section~\ref{info:scaled_burning}  \\
+448  \> \ct{PROF ... MATL_ID ... not a part of surface type ...} \> Section~\ref{info:solidoutputquantities}  \\
      \>                                                                               \>                          \\
 501 \> \ct{No ID provided ...} \> Section~\ref{info:HVAC}  \\
 502 \> \ct{Invalid TYPE_ID provided ...} \> Section~\ref{info:HVAC}  \\
@@ -14445,6 +14456,7 @@ Keyword             & Type     & Description                      & Units       
 885 \> \ct{DEVC ... must have coordinates, even if not a point quantity.} \> Section~\ref{info:DEVC} \\
 886 \> \ct{DEVC ... must have either an output QUANTITY or PROP_ID.} \> Section~\ref{info:DEVC} \\
 887 \> \ct{DEVC ... must have an ORIENTATION.} \> Section~\ref{info:heat_flux} \\
+    \>                                         \> or Section~\ref{info:bidir_probe} \\
 888 \> \ct{DEVC ... TEMPORAL_STATISTIC is not recognized.} \> Section~\ref{info:statistics} \\
 889 \> \ct{DEVC ... SPATIAL_STATISTIC is not recognized.} \> Section~\ref{info:statistics} \\
 890 \> \ct{DEVC ... STATISTICS is not recognized.} \> Section~\ref{info:statistics} \\
@@ -14491,6 +14503,7 @@ Keyword             & Type     & Description                      & Units       
 951 \> \ct{PROF ... requires an orientation index, IOR.} \> Section~\ref{info:PROF} \\
 952 \> \ct{PROF ... is not valid.} \> Section~\ref{info:PROF} \\
 953 \> \ct{PROF ... requires a PART_ID.} \> Section~\ref{info:PROF} \\
+954 \> \ct{PROF ... MATL_ID ... not found.} \> Section~\ref{info:PROF} \\
     \>                                                                                \>                          \\
 961 \> \ct{CELL_CENTERED not allowed with AGL_SLICE.} \> Section~\ref{info:complex_terrain} \\
 962 \> \ct{BNDF ... CPUA_Z, MPUA_Z, and AMPUA_Z require liquid droplets.} \> Section~\ref{bucket_test_1} \\
