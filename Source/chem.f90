@@ -991,11 +991,11 @@ ELSE IF(CVODE_TASK == CV_ONE_STEP) THEN
 ENDIF
 
 IF (IERR_C /= 0) THEN
+   ! If all internal substeps are taken try two more times. This will allow larger CFD timestep.
    ! Make MAXTRY at least CVODE_MAX_TRY or for larger timestep (>1E-3) scale it proportionaly.
    MAXTRY_FAC = CEILING(CVODE_MAX_TRY*(TEND-TCUR)/1.0E-3_EB)
    MAXTRY_FAC = MIN(MAX(MAXTRY_FAC,1),50)
    MAXTRY = CVODE_MAX_TRY*MAXTRY_FAC
-   ! If all internal substeps are taken try two more times. This will allow larger CFD timestep.
    IF (IERR_C == CV_TOO_MUCH_WORK) THEN !CV_TOO_MUCH_WORK == all internal substeps are taken
       NTRY = 0
       DO WHILE (NTRY < MAXTRY)
@@ -1011,8 +1011,8 @@ IF (IERR_C /= 0) THEN
 
    IF (IERR_C .NE. CV_SUCCESS) THEN
       IF (IERR_C == CV_TOO_MUCH_WORK) THEN
-         WRITE(LU_ERR,'(A, 2E18.8, A)')" WARN: CVODE took all internal substeps. CUR_CFD_TIME, DT, MAXTRY=", CUR_CFD_TIME, (TEND-TCUR),&
-                     MAXTRY, ". If the warning persists, reduce the timestep."
+         WRITE(LU_ERR,'(A, 2E18.8, A)')" WARN: CVODE took all internal substeps. CUR_CFD_TIME, DT, MAXTRY=", CUR_CFD_TIME, &
+                     (TEND-TCUR), MAXTRY, ". If the warning persists, reduce the timestep."
       ELSE
          WRITE(LU_ERR,'(A, I4, A, 2E18.8, A)')" WARN: CVODE didn't finish ODE solution with message code:", IERR_C, &
                         " and CUR_CFD_TIME, DT=", CUR_CFD_TIME, (TEND-TCUR), ". If the warning persists, reduce the timestep."
