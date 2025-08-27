@@ -14964,7 +14964,7 @@ PROC_DEVC_LOOP: DO N=1,N_DEVC
       ENDIF   
    ENDIF
 
-   IF(TRIM(ODE_SOLVER)=='CVODE' .AND. N_IGNITION_ZONES >1) THEN
+   IF(TRIM(ODE_SOLVER)=='CVODE' .AND. N_IGNITION_ZONES >= 1) THEN
       IF (TRIM(FUEL_ID_FOR_AFT) == 'null') THEN
          WRITE(MESSAGE,'(A)') 'ERROR(*): FUEL_ID_FOR_AFT must be specified when IGNITION_ZONE(s) are speciefied.' &
                      // NEW_LINE('A') // 'Provide FUEL_ID_FOR_AFT in the COMB line.'
