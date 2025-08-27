@@ -1011,7 +1011,7 @@ IF (IERR_C /= 0) THEN
 
    IF (IERR_C .NE. CV_SUCCESS) THEN
       IF (IERR_C == CV_TOO_MUCH_WORK) THEN
-         WRITE(LU_ERR,'(A, 2E18.8, A)')" WARN: CVODE took all internal substeps. CUR_CFD_TIME, DT, MAXTRY=", CUR_CFD_TIME, &
+         WRITE(LU_ERR,'(A, 2E18.8, I8, A)')" WARN: CVODE took all internal substeps. CUR_CFD_TIME, DT, MAXTRY=", CUR_CFD_TIME, &
                      (TEND-TCUR), MAXTRY, ". If the warning persists, reduce the timestep."
       ELSE
          WRITE(LU_ERR,'(A, I4, A, 2E18.8, A)')" WARN: CVODE didn't finish ODE solution with message code:", IERR_C, &

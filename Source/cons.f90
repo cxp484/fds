@@ -894,7 +894,6 @@ TYPE IGNITION_ZONE_TYPE
    REAL(EB) :: Y2            !< Upper y bound of Ignition Zone
    REAL(EB) :: Z1            !< Lower z bound of Ignition Zone
    REAL(EB) :: Z2            !< Upper z bound of Ignition Zone
-   REAL(EB) :: TMP           !< Temperature of Ignition Zone
    INTEGER :: DEVC_INDEX=0   !< Index of device controlling the status of the zone
    CHARACTER(LABEL_LENGTH) :: DEVC_ID='null'  !< Name of device controlling the status of the zone
 END TYPE IGNITION_ZONE_TYPE
@@ -903,7 +902,7 @@ INTEGER, ALLOCATABLE, DIMENSION(:) :: YP2ZZ
 REAL(EB) :: ODE_MIN_ATOL= -1._EB
 LOGICAL  :: EQUIV_RATIO_CHECK = .FALSE.
 REAL(EB) :: MIN_EQUIV_RATIO=0.1_EB
-REAL(EB) :: MAX_EQUIV_RATIO=10.0_EB
+REAL(EB) :: MAX_EQUIV_RATIO=20.0_EB
 LOGICAL  :: DO_CHEM_LOAD_BALANCE = .FALSE.
 INTEGER  :: MAX_CVODE_SUBSTEPS=100000
 INTEGER  :: CVODE_MAX_TRY=4
@@ -915,8 +914,9 @@ REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: CVODE_SUBSTEP_DATA
 INTEGER :: TOTAL_SUBSTEPS_TAKEN
 
 ! Adiabatic flame temperature calculation
-CHARACTER(LABEL_LENGTH) :: FUEL_ID_FOR_AFT
+CHARACTER(LABEL_LENGTH) :: FUEL_ID_FOR_AFT='null'
 INTEGER :: I_FUEL,I_CO2,I_H2O,I_O2,I_N2 ! Store the index of the species in the ZZ array.
+LOGICAL  :: USE_MIXED_ZN_AFT_TMP = .TRUE.
 
 ! Mixing
 REAL(EB) :: ZETA_ARTIFICAL_MIN_LIMIT=0.99_EB
