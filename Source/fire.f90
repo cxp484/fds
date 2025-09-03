@@ -1067,6 +1067,7 @@ CALL_CHEM_AGAIN = .FALSE.
 IF(IGN_ZN > 0) THEN
    CALL CALC_ADIABATIC_FLAME_TEMPERATURE(ZZ,TMP_IN,AFT)
    TMP_IN_MOD = MAX(TMP_IN,AFT)
+   ZETA_IN_MOD = 0.0_EB
 ELSE
    IF (SIM_MODE .NE. DNS_MODE .AND. USE_MIXED_ZN_AFT_TMP) THEN
       CALL CALC_ADIABATIC_FLAME_TEMPERATURE(ZZ,TMP_IN,AFT)
@@ -1078,9 +1079,8 @@ IF(ZETA_OUT > ZETA_ARTIFICAL_MAX_LIMIT) RETURN ! The mixing can be ignored due t
 
 CC = 0._EB
 
-! Get the initial mass and concentration of mixed zone
-CALL GET_MOLECULAR_WEIGHT(ZZ,MW)
 ! Calculate RHO based on actual temperrature, such that RHO and Concentration comes out to be same as in the cell.
+CALL GET_MOLECULAR_WEIGHT(ZZ,MW)
 RHO_IN = PRES_IN*MW/R0/TMP_IN ! [PR]= Pa, [MW] = g/mol, [R0]= J/K/kmol, [TMP]=K, [RHO]= kg/m3
 DO NS =1,N_TRACKED_SPECIES
   CC(NS) = RHO_IN*ZZ(NS)/SPECIES_MIXTURE(NS)%MW  ! [RHO]= kg/m3, [MW] = g/mol = kg/kmol, [CC] = kmol/m3
