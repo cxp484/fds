@@ -768,6 +768,7 @@ TYPE REACTION_TYPE
    REAL(EB) :: RT1_TROE                     !< TROE reaction 1/T1
    REAL(EB) :: T2_TROE                      !< TROE reaction T2
    REAL(EB) :: RT3_TROE                     !< TROE reaction 1/T3
+   REAL(EB) :: A_AD                         !< ADSORPTION reaction reaction rate multiplier
 
 END TYPE REACTION_TYPE
 
