@@ -107,7 +107,7 @@ PUBLIC :: ADD_CUTCELL_D_PBAR_DT, ADD_LINKEDCELL_D_PBAR_DT,ADD_CUTCELL_PSUM,ADD_L
           CC_CUTCELL_VELOCITY,CC_CUTFACE_VELOCITY,CC_RESTORE_UVW_UNLINKED,&
           CHECK_CFLVN_LINKED_CELLS,ADD_Q_DOT_CUTCELLS,CFACE_THERMAL_GASVARS,&
           CFACE_PREDICT_NORMAL_VELOCITY,COMPUTE_LINKED_CUTFACE_BAROCLINIC,&
-          COPY_CC_UNKH_TO_HS, COPY_CC_HS_TO_UNKH, COPY_UNST_DM_TO_CART, CUTFACE_VELOCITIES, &
+          COPY_CC_UNKH_TO_HS, COPY_CC_MUNKH_TO_UNKH, COPY_UNST_DM_TO_CART, CUTFACE_VELOCITIES, &
           GET_CFACE_OPEN_BC_COEF,GET_FN_DIVERGENCE_CUTCELL,GET_OPENBC_TANGENTIAL_CUTFACE_VEL,&
           GET_CUTCELL_DDDT,GET_H_CUTFACES,GET_H_MATRIX_CC,GET_H_GUARD_CUTCELL,GET_CRTCFCC_INT_STENCILS,GET_RCFACES_H, &
           GET_CC_MATRIXGRAPH_H,GET_CC_IROW,GET_CC_UNKH,GET_CUTCELL_HP, GET_LINKED_FV, GET_PRES_CFACE_BCS, &
@@ -19680,22 +19680,17 @@ END SUBROUTINE GET_CUTCELL_FH
 
 ! ---------------------------- GET_H_MATRIX_CC ------------------------------------
 
-SUBROUTINE GET_H_MATRIX_CC(NM,NM1,IPZ,D_MAT_HP)
+SUBROUTINE GET_H_MATRIX_CC(NM,NM1,IPZ)
 
 ! This routine assumes the calling subroutine has called POINT_TO_MESH for NM.
 
 INTEGER, INTENT(IN) :: NM,NM1,IPZ
-REAL(EB), POINTER, DIMENSION(:,:) :: D_MAT_HP
 
 ! Local Variables:
 INTEGER :: X1AXIS,IFACE,ICF,I,J,K,IND(LOW_IND:HIGH_IND),IND_LOC(LOW_IND:HIGH_IND)
 INTEGER :: LOCROW_1,LOCROW_2,ILOC,JLOC,JCOL,IROW
 REAL(EB) :: AF,IDX,BIJ,KFACE(2,2)
 
-IF (.NOT. ASSOCIATED(D_MAT_HP)) THEN
-   WRITE(LU_ERR,*) 'GET_H_MATRIX_CC in geom.f90: Pointer D_MAT_HP not associated.'
-   RETURN
-ENDIF
 
 ! X direction bounds:
 ILO_FACE = 0                ! Low mesh boundary face index.
@@ -19752,8 +19747,7 @@ DO IFACE=1,MESHES(NM)%CC_NRCFACE_H
       DO JLOC=LOW_IND,HIGH_IND ! Local col number in Kface, JD
           IROW=IND_LOC(ILOC)                                ! Process Local Unknown number.
           JCOL=RCF%JDH(ILOC,JLOC) ! Local position of coef in D_MAT_H
-          ! Add coefficient:
-          D_MAT_HP(JCOL,IROW) = D_MAT_HP(JCOL,IROW) + KFACE(ILOC,JLOC)
+          ZONE_SOLVE(IPZ)%ROW_H(IROW)%D(JCOL) = ZONE_SOLVE(IPZ)%ROW_H(IROW)%D(JCOL) + KFACE(ILOC,JLOC)
       ENDDO
    ENDDO
 ENDDO
@@ -19801,8 +19795,7 @@ DO ICF = 1,MESHES(NM)%N_CUTFACE_MESH
          DO JLOC=LOW_IND,HIGH_IND ! Local col number in Kface, JD
                IROW=IND_LOC(ILOC)
                JCOL=CF%JDH(ILOC,JLOC,IFACE)
-               ! Add coefficient:
-               D_MAT_HP(JCOL,IROW) = D_MAT_HP(JCOL,IROW) + KFACE(ILOC,JLOC)
+               ZONE_SOLVE(IPZ)%ROW_H(IROW)%D(JCOL) = ZONE_SOLVE(IPZ)%ROW_H(IROW)%D(JCOL) + KFACE(ILOC,JLOC)
          ENDDO
       ENDDO
    ENDDO
@@ -19932,9 +19925,9 @@ ELSE ! MESH_LOOP_2 in calling routine.
       ! Add to global matrix arrays:
       DO LOCROW=LOCROW_1,LOCROW_2
          DO IIND=LOW_IND,HIGH_IND
-            NII = ZONE_SOLVE(IPZ)%NNZ_D_MAT_H(IND_LOC(LOCROW))
+            NII = ZONE_SOLVE(IPZ)%ROW_H(IND_LOC(LOCROW))%NNZ
             DO ILOC=1,NII
-               IF ( IND(IIND) == ZONE_SOLVE(IPZ)%JD_MAT_H(ILOC,IND_LOC(LOCROW)) ) THEN
+               IF ( IND(IIND) == ZONE_SOLVE(IPZ)%ROW_H(IND_LOC(LOCROW))%JD(ILOC) ) THEN
                    RCF%JDH(LOCROW,IIND) = ILOC
                    EXIT
                ENDIF
@@ -19976,9 +19969,9 @@ ELSE ! MESH_LOOP_2 in calling routine.
          ! Add to global matrix arrays:
          DO LOCROW=LOCROW_1,LOCROW_2
             DO IIND=LOW_IND,HIGH_IND
-               NII = ZONE_SOLVE(IPZ)%NNZ_D_MAT_H(IND_LOC(LOCROW))
+               NII = ZONE_SOLVE(IPZ)%ROW_H(IND_LOC(LOCROW))%NNZ
                DO ILOC=1,NII
-                  IF ( IND(IIND) == ZONE_SOLVE(IPZ)%JD_MAT_H(ILOC,IND_LOC(LOCROW)) ) THEN
+                  IF ( IND(IIND) == ZONE_SOLVE(IPZ)%ROW_H(IND_LOC(LOCROW))%JD(ILOC) ) THEN
                         CF%JDH(LOCROW,IIND,IFACE) = ILOC
                         EXIT
                   ENDIF
@@ -19999,37 +19992,93 @@ SUBROUTINE ADD_INPLACE_NNZ_H_WHLDOM(LOCROW_1,LOCROW_2,IND,IND_LOC,IPZ)
 INTEGER, INTENT(IN) :: LOCROW_1,LOCROW_2,IND(LOW_IND:HIGH_IND),IND_LOC(LOW_IND:HIGH_IND),IPZ
 
 ! Local Variables:
-INTEGER LOCROW, IIND, NII, ILOC, JLOC
+INTEGER LOCROW, IIND, ILOC
 LOGICAL INLIST
 
 LOCROW_LOOP : DO LOCROW=LOCROW_1,LOCROW_2
    DO IIND=LOW_IND,HIGH_IND
-      NII = ZONE_SOLVE(IPZ)%NNZ_D_MAT_H(IND_LOC(LOCROW))
-      ! Check that column index hasn't been already counted:
-      INLIST = .FALSE.
-      DO ILOC=1,NII
-         IF ( IND(IIND) == ZONE_SOLVE(IPZ)%JD_MAT_H(ILOC,IND_LOC(LOCROW)) ) THEN
-            INLIST = .TRUE.
-            EXIT
+      ! Populate variable per-row storage ROW_H only:
+      ILOC = IND_LOC(LOCROW)
+      IF (ILOC>=1 .AND. ILOC<=SIZE(ZONE_SOLVE(IPZ)%ROW_H)) THEN
+         IF (.NOT. ALLOCATED(ZONE_SOLVE(IPZ)%ROW_H(ILOC)%JD)) THEN
+            ALLOCATE(ZONE_SOLVE(IPZ)%ROW_H(ILOC)%JD(7))
+            ALLOCATE(ZONE_SOLVE(IPZ)%ROW_H(ILOC)%D(7))
+            ZONE_SOLVE(IPZ)%ROW_H(ILOC)%JD(1) = IND(IIND)
+            ZONE_SOLVE(IPZ)%ROW_H(ILOC)%D(1)  = 0._EB
+            ZONE_SOLVE(IPZ)%ROW_H(ILOC)%NNZ   = 1
+         ELSE
+            INLIST = ANY(ZONE_SOLVE(IPZ)%ROW_H(ILOC)%JD(1:ZONE_SOLVE(IPZ)%ROW_H(ILOC)%NNZ) == IND(IIND))
+            IF (.NOT. INLIST) THEN
+               CALL INSERT_SORTED_INT_REAL(            &
+                     ZONE_SOLVE(IPZ)%ROW_H(ILOC)%JD,   &
+                     ZONE_SOLVE(IPZ)%ROW_H(ILOC)%D,    &
+                     ZONE_SOLVE(IPZ)%ROW_H(ILOC)%NNZ,  &
+                     IND(IIND))
+            ENDIF
          ENDIF
-      ENDDO
-      IF ( INLIST ) CYCLE
-
-      ! Now add in place:
-      NII = NII + 1
-      DO ILOC=1,NII
-          IF ( ZONE_SOLVE(IPZ)%JD_MAT_H(ILOC,IND_LOC(LOCROW)) > IND(IIND) ) EXIT
-      ENDDO
-      DO JLOC=NII,ILOC+1,-1
-         ZONE_SOLVE(IPZ)%JD_MAT_H(JLOC,IND_LOC(LOCROW)) = ZONE_SOLVE(IPZ)%JD_MAT_H(JLOC-1,IND_LOC(LOCROW))
-      ENDDO
-      ZONE_SOLVE(IPZ)%NNZ_D_MAT_H(IND_LOC(LOCROW))   = NII
-      ZONE_SOLVE(IPZ)%JD_MAT_H(ILOC,IND_LOC(LOCROW)) = IND(IIND)
+      ENDIF
    ENDDO
 ENDDO LOCROW_LOOP
 
 RETURN
 END SUBROUTINE ADD_INPLACE_NNZ_H_WHLDOM
+
+! Helper: insert NEWCOL into sorted integer array JD and mirror REAL array D, grow allocs
+SUBROUTINE INSERT_SORTED_INT_REAL(JD, D, NNZ, NEWCOL)
+USE PRECISION_PARAMETERS
+IMPLICIT NONE (TYPE,EXTERNAL)
+INTEGER, ALLOCATABLE, INTENT(INOUT) :: JD(:)
+REAL(EB), ALLOCATABLE, INTENT(INOUT) :: D(:)
+INTEGER, INTENT(INOUT) :: NNZ
+INTEGER, INTENT(IN) :: NEWCOL
+
+INTEGER :: POS, CAP
+INTEGER :: I
+INTEGER, ALLOCATABLE :: JD_TMP(:)
+REAL(EB), ALLOCATABLE :: D_TMP(:)
+
+! Determine current capacity from allocated size
+CAP = SIZE(JD)
+
+! Grow capacity geometrically if needed
+IF (NNZ+1 > CAP) THEN
+   CAP = MAX(2*MAX(CAP,1), NNZ+1)
+   ALLOCATE(JD_TMP(CAP))
+   ALLOCATE(D_TMP(CAP))
+   IF (NNZ > 0) THEN
+      JD_TMP(1:NNZ) = JD(1:NNZ)
+      D_TMP(1:NNZ)  = D(1:NNZ)
+   ENDIF
+   IF (ALLOCATED(JD)) DEALLOCATE(JD)
+   IF (ALLOCATED(D))  DEALLOCATE(D)
+   CALL MOVE_ALLOC(JD_TMP, JD)
+   CALL MOVE_ALLOC(D_TMP,  D)
+ENDIF
+
+! Find insertion position (ascending order)
+POS = 1
+DO WHILE (POS <= NNZ)
+   IF(JD(POS) < NEWCOL) THEN
+      POS = POS + 1
+   ELSE
+      EXIT
+   ENDIF
+ENDDO
+
+! Shift in-place to make room
+IF (NNZ >= POS) THEN
+   DO I = NNZ, POS, -1
+      JD(I+1) = JD(I)
+      D(I+1)  = D(I)
+   ENDDO
+ENDIF
+
+! Insert new entry
+JD(POS) = NEWCOL
+D(POS)  = 0._EB
+NNZ = NNZ + 1
+
+END SUBROUTINE INSERT_SORTED_INT_REAL
 
 
 ! --------------------------- GET_MMATRIX_SCALAR_3D -------------------------------
@@ -21653,16 +21702,14 @@ ENDIF FLAG12_COND
 RETURN
 END SUBROUTINE NUMBER_UNKH_CUTCELLS
 
-! ------------------- COPY_CC_HS_TO_UNKH ----------------------------
+! ------------------- COPY_CC_MUNKH_TO_UNKH ----------------------------
 
-SUBROUTINE COPY_CC_HS_TO_UNKH(NM)
-
-INTEGER, INTENT(IN) :: NM
+SUBROUTINE COPY_CC_MUNKH_TO_UNKH
 
 ! Local Variables:
-INTEGER :: NOM,ICC,II,JJ,KK,IOR,IW,IIO,JJO,KKO
+INTEGER :: NOM,ICC,IW,IIO,JJO,KKO,II,JJ,KK
 TYPE (OMESH_TYPE), POINTER :: OM
-
+TYPE (BOUNDARY_COORD_TYPE), POINTER :: BC
 ! Loop over external wall cells:
 EXTERNAL_WALL_LOOP: DO IW=1,N_EXTERNAL_WALL_CELLS
 
@@ -21670,11 +21717,6 @@ EXTERNAL_WALL_LOOP: DO IW=1,N_EXTERNAL_WALL_CELLS
    EWC=>EXTERNAL_WALL(IW)
    IF (WC%BOUNDARY_TYPE/=INTERPOLATED_BOUNDARY) CYCLE EXTERNAL_WALL_LOOP
 
-   BC => BOUNDARY_COORD(WC%BC_INDEX)
-   II = BC%II
-   JJ = BC%JJ
-   KK = BC%KK
-   IOR = BC%IOR
    NOM = EWC%NOM
    OM => OMESH(NOM)
 
@@ -21682,14 +21724,34 @@ EXTERNAL_WALL_LOOP: DO IW=1,N_EXTERNAL_WALL_CELLS
    KKO=EWC%KKO_MIN
    JJO=EWC%JJO_MIN
    IIO=EWC%IIO_MIN
-
+   BC => BOUNDARY_COORD(WC%BC_INDEX)
+   II = BC%II; JJ = BC%JJ; KK = BC%KK;
    ICC=CCVAR(II,JJ,KK,CC_IDCC)
-
    IF (ICC > 0) THEN ! Cut-cells on this guard-cell Cartesian cell.
-      MESHES(NM)%CUT_CELL(ICC)%UNKH(1) = INT(OM%HS(IIO,JJO,KKO))
+      CUT_CELL(ICC)%UNKH(1) = OM%MUNKH(IIO,JJO,KKO)
    ELSE
-      MESHES(NM)%CCVAR(II,JJ,KK,CC_UNKH) = INT(OM%HS(IIO,JJO,KKO))
+      CCVAR(II,JJ,KK,CC_UNKH) = OM%MUNKH(IIO,JJO,KKO)
    ENDIF
+
+   ! ! Loop over all cells in mesh NOM that correspond to this boundary face (supports grid refinement):
+   ! DO KKO = EWC%KKO_MIN, EWC%KKO_MAX
+   !    DO JJO = EWC%JJO_MIN, EWC%JJO_MAX
+   !       DO IIO = EWC%IIO_MIN, EWC%IIO_MAX
+
+   !          ! Check if this cell in mesh NOM is a cut-cell:
+   !          ICC = MESHES(NOM)%CCVAR(IIO,JJO,KKO,CC_IDCC)
+
+   !          IF (ICC > 0) THEN
+   !             ! Copy to cut-cell storage in mesh NOM:
+   !             MESHES(NOM)%CUT_CELL(ICC)%UNKH(1) = OM%MUNKH(IIO,JJO,KKO)
+   !          ELSE
+   !             ! Copy to regular cell storage in mesh NOM:
+   !             MESHES(NOM)%CCVAR(IIO,JJO,KKO,CC_UNKH) = OM%MUNKH(IIO,JJO,KKO)
+   !          ENDIF
+
+   !       ENDDO
+   !    ENDDO
+   ! ENDDO
 
 ENDDO EXTERNAL_WALL_LOOP
 
@@ -21704,7 +21766,7 @@ EXTERNAL_WALL_LOOP2: DO IW=1,N_EXTERNAL_WALL_CELLS
 ENDDO EXTERNAL_WALL_LOOP2
 
 RETURN
-END SUBROUTINE COPY_CC_HS_TO_UNKH
+END SUBROUTINE COPY_CC_MUNKH_TO_UNKH
 
 ! ------------------- COPY_CC_UNKH_TO_HS ----------------------------
 

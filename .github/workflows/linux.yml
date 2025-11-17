@@ -102,11 +102,15 @@ jobs:
       with:
         python-version: '3.9'
         cache: 'pip' # caching pip dependencies
-    - run: pip install -r .github/requirements.txt
+    - run: |
+        echo $GITHUB_WORKSPACE
+        cd $GITHUB_WORKSPACE/Utilities/Python
+        source setup_python_env.sh --batchmode
 
     - name: Python test
       run: |
         echo $GITHUB_WORKSPACE
         cd $GITHUB_WORKSPACE/Utilities/Python
+        source $GITHUB_WORKSPACE/.github/fds_python_env/bin/activate
         python hello_world.py
         : # python FDS_verification_script.py

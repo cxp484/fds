@@ -1245,7 +1245,7 @@ Figure~\ref{fig_hot_layer} shows the analytical solution (solid lines) plotted t
 \textbf{Max Gould, NIST SURF student}\\
 \textbf{Ragini Acharya, United Technologies Research Center}\\
 
-\noindent In this section we present another case that demonstrates the second-order accuracy of the FDS transport algorithm. We consider the analytically stable flow field consisting of a single vortex advected by a uniform flow, a test case developed by CERFACS\footnote{Centre Europ\'een de Recherche et de Formation Avanc\'ee en Calcul Scientifique} \cite{cerfacs_test}. Maintaining the geometry of the vortex over time provides a good measure of the order of accuracy of the transport scheme.
+\noindent In this section another case is presented case that demonstrates the second-order accuracy of the FDS transport algorithm. Consider the analytically stable flow field consisting of a single vortex advected by a uniform flow, a test case developed by CERFACS\footnote{Centre Europ\'een de Recherche et de Formation Avanc\'ee en Calcul Scientifique} \cite{cerfacs_test}. Maintaining the geometry of the vortex over time provides a good measure of the order of accuracy of the transport scheme.
 
 \begin{figure}[h!]
    \centering
@@ -1287,9 +1287,9 @@ where $\Gamma$ determines its intensity and $R_c$ its characteristic size. The v
 u (x,z) &\equiv& U_{0} + \frac{\partial}{\partial z} \Psi_{0} = U_{0} - \frac{\Gamma \ z}{R_{c}^{2}} \exp \left[ - \frac{x^{2} + z^{2}}{2 \ R_{c}^{2}} \right], \\
 w (x,z) &\equiv& - \frac{\partial}{\partial x} \Psi_{0} = \frac{\Gamma \ x}{R_{c}^{2}} \exp \left[ - \frac{x^{2} + z^{2}}{2 \ R_{c}^{2}} \right],
 \end{eqnarray}
-where $u$ and $w$ refer to velocity in the $x$ and $z$-directions, respectively. For our purposes we need only analyze one component of the velocity field. We will focus our attention on the $u$-component of velocity.
+where $u$ and $w$ refer to velocity in the $x$ and $z$-directions, respectively. It is sufficient to analyze the $u$-component of velocity.
 
-We define the computational domain as a two-dimensional square region, $L=0.3112$~m on a side, with periodic boundary conditions. The domain is discretized for a range of square, two-dimensional meshes of $40^{2}$, $80^{2}$, $160^{2}$, and $320^{2}$ grid cells. For the purposes of this test, we set the flow parameters as
+The computational domain is a two-dimensional square region, $L=0.3112$~m on a side, with periodic boundary conditions. The domain is discretized for a range of square, two-dimensional meshes of $40^{2}$, $80^{2}$, $160^{2}$, and $320^{2}$ grid cells. The flow parameters are
 \[
 \begin{array}{lll}
 U_{0} &&= 35 \ \mathrm{m/s} \\
@@ -1297,23 +1297,22 @@ R_{c} &= L / 20 &= 0.01556 \ \mathrm{m} \\
 \Gamma &= 0.04 \ U_{0} \ R_{c} \ \sqrt{e} &= 0.0359157
 \end{array}
 \]
-The constant flow field and periodic boundary conditions cause the vortex to repeatedly pass through the computational domain. The ``pass-through'' time, $t_{f}$, is defined as the time period required for the stable vortex to return to its original position,
+The constant flow field and periodic boundary conditions cause the vortex to repeatedly pass through the computational domain. The ``pass-through'' time, $t_{\rm f}$, is defined as the time period required for the stable vortex to return to its original position,
 \begin{equation*}
-t_{f} = L / U_{0} \simeq 8.8914 \times 10^{-3} \ \mathrm{s}.
+t_{\rm f} = L / U_{0} \simeq 8.8914 \times 10^{-3} \ \mathrm{s}
 \end{equation*}
-To ensure that the numerical solution converges to the analytical solution, we set the time step, $\dt$, so that the Courant-Friedrichs-Lewy (CFL) number is 0.5.
-
+To ensure that the numerical solution converges to the analytical solution, the time step, $\dt$, is chosen so that the Courant-Friedrichs-Lewy (CFL) number is 0.5.
 
 \begin{figure}[h]
    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
       \includegraphics[height=2.2in]{SCRIPT_FIGURES/vort2d_80_uzgraph} &
       \includegraphics[height=2.2in]{SCRIPT_FIGURES/vort2d_160_uzgraph}
    \end{tabular*}
-   \caption[Velocity in the \ct{vort2d} test case]{$u$-velocity along the $z$-axis at $x=0$ plotted for each of the vortex's first four loops through the computational domain. (Left) $80^{2}$ grid cell model. (Right) $160^{2}$ grid cell model.}
+   \caption[Velocity in the \ct{vort2d} test case]{$u$-velocity along the $z$-axis at $x=0$ plotted for each of the vortex's first three passes through the computational domain. (Left) $80^{2}$ grid cell model. (Right) $160^{2}$ grid cell model.}
    \label{fig_vort2d_axisvelocity}
 \end{figure}
 
-A plot of $u$-velocity values just along the $z$-axis provides a simple characterization of the vortex geometry. The extent to which this geometry changes over time provides a qualitative measure of the accuracy of the transport algorithm. Figure \ref{fig_vort2d_axisvelocity} displays these plots for two different grid resolutions. Each line represents a plot taken for a different number of flow-through times such that the red lines represent the vortex after it has undergone the most passes through the computational domain while the green lines represent the vortex in the initial phase. The broken black line represents the analytical solution. As the vortex undergoes more passes through the computational domain, its velocity profile diverges further and further from the analytical profile. While divergence still occurs on the finer mesh, the extent to which it diverges after the same number of flow-through times is significantly smaller.
+A plot of $u$-velocity along the $z$-axis provides a simple characterization of the vortex geometry. The extent to which this geometry changes over time provides a qualitative measure of the accuracy of the transport algorithm. Figure~\ref{fig_vort2d_axisvelocity} displays these plots for two different grid resolutions. Each curve represents the state of the vortex at each flow-through time. The black curve represents the analytical solution for which the numerical solution has been initialized. As the vortex undergoes more passes through the computational domain, its velocity profile diverges from the analytical profile. While divergence still occurs on the finer mesh, the extent to which it diverges after the same number of flow-through times is significantly smaller.
 
 \begin{figure}[h!]
    \centering
@@ -1322,7 +1321,7 @@ A plot of $u$-velocity values just along the $z$-axis provides a simple characte
     \label{fig_vort2d_error}
 \end{figure}
 
-The rate with which the simulated profiles converge to the analytical one defines the order of accuracy of the numerical scheme. In Fig.~\ref{fig_vort2d_error} we plot the rms error of the numerical solution as a function of the grid resolution. The three colored curves represent the rms error at three different pass-through times. The broken and solid black lines represent the plot gradient corresponding to first and second order error respectively. While the error increases with each flow-through time, the gradients of the lines are roughly parallel to the solid black line, indicating second-order accuracy of the numerical scheme.
+The rate with which the simulated profiles converge to the analytical one defines the order of accuracy of the numerical scheme. In Fig.~\ref{fig_vort2d_error} the error of the numerical solution is plotted as a function of the grid resolution. The three colored curves represent the error at three different pass-through times. The broken and solid black lines represent the plot gradient corresponding to first and second order error respectively. While the error increases with each flow-through time, the gradients of the lines are roughly parallel to the solid black line, indicating second-order accuracy of the numerical scheme.
 
 To analyze the stability of the vortex at times other than discrete multiples of the pass-through time, consider the time-dependent potential field and its corresponding $u$-velocity component:
 \begin{equation}
@@ -1333,7 +1332,7 @@ To analyze the stability of the vortex at times other than discrete multiples of
 \label{eqn_uvel_timedep}
 u (x,z,t) = U_{0} - \Psi_{0} \ \frac{z}{R_{c}^{2}} \exp \left[\frac{2 \ U_{0} \ x \ t - U_{0}^{2} \ t^{2}}{2 \ R_{c}^{2}} \right].
 \end{equation}
-In Fig.~\ref{fig_vort2d_pointvelocity}, we show the $u$-velocity at a single point, on the lower left fringe of the vortex, for two different mesh resolutions, $80^{2}$ and $160^{2}$. A mesh resolution of $320^{2}$ grid cells produces a plot (not shown) that is, to the eye, a perfect match out to four pass-through times.
+In Fig.~\ref{fig_vort2d_pointvelocity}, the $u$-velocity at a single point on the lower left fringe of the vortex is plotted for two different mesh resolutions, $80^{2}$ and $160^{2}$. A mesh resolution of $320^{2}$ grid cells produces a plot (not shown) that is, to the eye, a perfect match out to four pass-through times.
 
 \begin{figure}[h!]
    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
@@ -1354,7 +1353,7 @@ In Fig.~\ref{fig_vort2d_pointvelocity}, we show the $u$-velocity at a single poi
 
 When multiple infinitely fast reactions are present it is not trivial to correctly partition the limiting reactant and maintain species bounds.  FDS uses a special subcycling algorithm by Kahaner \cite{Kahaner:1989} to maintain boundedness for species when time integrating the ODEs for the chemical reaction step (the method is further discussed in the FDS Tech Guide \cite{FDS_Math_Guide}).  In this section, we examine two test cases designed to verify the time integration method.
 
-The first case, \ct{bound_test_1}, consists of two independent reactions, one with air as the limiting reactant, one with fuel as the limiting reactant.  The stoichiometry of each reaction is the same: $\mathrm{F} + \mathrm{A} \rightarrow 2\,\mathrm{P}$.  The initial volume fractions of determine which species are limiting.  The results are shown in Fig.~\ref{fig:bound_test_1}.  For the first reaction, $X_{\rm F1}$ is initially 0.3 and $X_{\rm A1}$ is initially 0.2.  Therefore, all the A1 is converted to P1, which has a final volume fraction of $X_{\rm P1}=0.4$.  In the second reaction, the initial fuel volume fraction is $X_{\rm F2}=0.1$ (limiting) and the initial air volume fraction is $X_{\rm A2}=0.4$.  As can be see in Fig.~\ref{fig:bound_test_1}, the resulting final values give a product volume fraction of twice the limiting reactant, $X_{\rm P2}=0.2$.
+The first case, \ct{bound_test_1}, consists of two independent reactions, one with air as the limiting reactant, one with fuel as the limiting reactant.  The stoichiometry of each reaction is the same: $\mathrm{F} + \mathrm{A} \rightarrow 2\,\mathrm{P}$.  The initial volume fractions determine which species are limiting.  The results are shown in Fig.~\ref{fig:bound_test_1}.  For the first reaction, $X_{\rm F1}$ is initially 0.3 and $X_{\rm A1}$ is initially 0.2.  Therefore, all the A1 is converted to P1, which has a final volume fraction of $X_{\rm P1}=0.4$.  In the second reaction, the initial fuel volume fraction is $X_{\rm F2}=0.1$ (limiting) and the initial air volume fraction is $X_{\rm A2}=0.4$.  As can be seen in Fig.~\ref{fig:bound_test_1}, the resulting final values give a product volume fraction of twice the limiting reactant, $X_{\rm P2}=0.2$.
 
 \begin{figure}[!ht]
    \centering
@@ -1491,7 +1490,7 @@ In this case a 128 \si{m^3} box is initially filled with air at 20 \si{\degreeCe
 \subsection{Evaporation with Constant Specific Heat Ratio (\texorpdfstring{\ct{water_evap_1_const_gamma}}{water\_evap\_1\_const\_gamma})}
 \label{water_evap_1_const_gamma}
 
-This test case is a replica of \ct{water_evaporation_1} in Sec.~\ref{water_evaporation_1} using constant specific heat ratio.  A 1 \si{m^3} box is initially filled with dry air at 200 \si{\degreeCelsius} and mono-disperse water droplets totaling 0.01 kg in mass initially at 20 \si{\degreeCelsius}.  In this case, all the water evaporates.  The final gas temperature may be computed from energy conservation.  Pressure change may be computed from the ideal gas law.  Results are shown in Fig.~\ref{water_evap_1_const_gamma_plots}.  Details of the expected results may be found in \ct{water_evap_1_const_gamma.m} in the \ct{Utilities/Matlab/scripts/} directory in the FDS repository \cite{FDS-SMV_repository}.
+This test case is a replica of \ct{water_evaporation_1} in Sec.~\ref{water_evaporation_1} using constant specific heat ratio.  A 1 \si{m^3} box is initially filled with dry air at 200 \si{\degreeCelsius} and mono-disperse water droplets totaling 0.01 kg in mass initially at 20 \si{\degreeCelsius}.  In this case, all the water evaporates.  The final gas temperature may be computed from energy conservation.  Pressure change may be computed from the ideal gas law.  Results are shown in Fig.~\ref{water_evap_1_const_gamma_plots}.  Details of the expected results may be found in \ct{water_evap_1_const_gamma.py} in the \ct{Utilities/Python/scripts/} directory in the FDS repository \cite{FDS-SMV_repository}.
 
 \begin{figure}[ht!]
 \noindent
@@ -1523,7 +1522,7 @@ Consider a long tube with rectangular cross section. Air with density $\rho_\inf
 \end{eqnarray}
 Note that $\R=8314.5$~J/kmol/K and the sensible enthalpy, $h_{\rm s}=\int_{T_\infty}^T c_p(T') \, \d T'$. The tube is 10~cm long, 1~mm wide and 4~mm tall, and discretized with 1~mm grid cells. A vertical column of cells contains a volumetric heat source that introduces heat at a rate of $\dq'''=2.5133 \times 10^8$~W/m$^3$ within each 1~mm cell. The velocity, density, pressure and temperature are constant starting at the inlet, and at the heat source, the velocity and temperature jump up, and the density and pressure drop down over the span of a single cell and remain steady until the outlet is reached, where the perturbation pressure is set to zero.
 
-For the case where the ratio of specific heats are constant with $\gamma=1.4$ and $W=28.85$ kg/kmol for air, $c_p=\gamma \, (\R/W) /(\gamma-1)=1008.7$~J/kg/K and $\rho c_p T=\gamma \, p_\infty / (\gamma-1)$. In the second equation of (\ref{div1d}), the second two terms on the right hand side are identically zero; thus, the jump in velocity can be computed
+For the case where the ratio of specific heats are constant with $\gamma=1.4$ and $W=28.85$~kg/kmol for air, $c_p=\gamma \, (\R/W) /(\gamma-1)=1008.7$~J/kg/K and $\rho c_p T=\gamma \, p_\infty / (\gamma-1)$. In the second equation of (\ref{div1d}), the second two terms on the right hand side are identically zero; thus, the jump in velocity can be computed
 \be
    \Delta u = \frac{\gamma-1}{\gamma \, p_\infty} \, \dq''' \, \Delta x \approx 0.7087 \; \hbox{m/s}
 \ee
@@ -1555,23 +1554,20 @@ Plots of $u(x)$, $\rho(x)$, $\tp(x)$, and $T(x)$ are shown in Fig.~\ref{tunnel_c
 \subsection{1-D Flow in a Tunnel (\texorpdfstring{\ct{tunnel_linear_cp}}{tunnel\_linear\_cp})}
 \label{tunnel_linear_cp}
 
-Considering the same layout and the same environmental conditions of the previous case. Air is blown at a constant rate, $u_\infty=1$~m/s, through a 10~cm long, 1~mm wide and 4~mm tall tube. A steady heat source is located in the middle of the tube, composed of a vertical column of cells containing a volumetric heat source that introduces heat at a rate of $\dq'''=2.5133 \times 10^8$~W/m$^3$ within each 1~mm cell . Ignoring wall friction, gravity, radiation transport, thermal conductivity, viscosity, and assuming that the heat source uniformly spans the cross section of the tube, a set of 1-D equations can be derived for the steady-state velocity, $u(x)$, density, $\rho(x)$, perturbation pressure, $\tp(x)$, and temperature, $T(x)$. This equations are the same used in the previous example in (\ref{mom1d}) and (\ref{div1d}).
+Consider the same layout and conditions of the previous case. Air is blown at a constant rate, $u_\infty=1$~m/s, through a 10~cm long, 1~mm wide and 4~mm tall tube. A steady heat source is located in the middle of the tube, composed of a vertical column of cells containing a volumetric heat source that introduces heat at a rate of $\dq'''=2.5133 \times 10^8$~W/m$^3$ within each 1~mm cell. Ignoring wall friction, gravity, radiation transport, thermal conductivity, viscosity, and assuming that the heat source uniformly spans the cross section of the tube, a set of 1-D equations can be derived for the steady-state velocity, $u(x)$, density, $\rho(x)$, perturbation pressure, $\tp(x)$, and temperature, $T(x)$. These equations are the same used in the previous example in (\ref{mom1d}) and (\ref{div1d}).
 
-Remembering that $\R=8314.5$~J/kmol/K and the sensible enthalpy, $h_{\rm s}=\int_{T_\infty}^T c_p(T') \, \d T'$. The velocity, density, pressure and temperature are constant starting at the inlet, until the heat source, where the velocity and temperature jump up, and the density and pressure drop down over the span of a single cell and remain steady until the outlet is reached, where the perturbation pressure is set to zero.
-
-For the case where the specific heat varies as a function of the temperature. In the second equation of (\ref{div1d}), using the first equation of (\ref{mom1d}) and (\ref{div1d}), and some relationships among the variables is possible to arrive to a simpler expression.
+The velocity, density, pressure and temperature are constant starting at the inlet, and at the heat source the velocity and temperature jump up and the density and pressure drop down over the span of a single cell and remain steady until the outlet is reached, where the perturbation pressure is set to zero. In the second equation of (\ref{div1d}), using the first equation of (\ref{mom1d}) and (\ref{div1d}), and some relationships among the variables it is possible to arrive at a simpler expression.
 \begin{eqnarray}
    \rho c_p T \frac{\d u}{\d x}  &=& \dq''' - u \rho \, \frac{\d}{\d x} (h_{\rm s}) - u h_{\rm s} \, \frac{\d}{\d x} (\rho) - c_p T u \frac{\d \rho}{\d x}  + h_{\rm s} u \frac{\d \rho}{\d x} \\
    c_p \rho_\infty u_\infty \frac{\d T}{\d x} &=& \dq'''  - u \rho \, \frac{\d}{\d x} (h_{\rm s}) + c_p u \rho \frac{\d T}{\d x}  \\
   \dq''' &=&   u \rho \, \frac{\d}{\d x} (h_{\rm s}) \\
   \frac{ \dq'''}{\rho_\infty u_\infty} &=&  \frac{\d}{\d x} (h_{\rm s})  \label{1stLaw}
 \end{eqnarray}
-
-Through the steps, the continuity, in (\ref{mom1d}), and state equation, in (\ref{div1d}), are used to make the temperature the only variable and simplifying equivalent terms until the equation (\ref{1stLaw}) is obtained. Equation (\ref{1stLaw}) corresponds to a 1-D form of the first law of thermodynamics, proving the divergence equation as a consistent energy balance. Then, for the case where the $c_p$ is a linear function of the temperature, $c_p=aT +b$, we have
+The continuity, (\ref{mom1d}), and state equation, (\ref{div1d}), render the temperature the only variable and after simplifying, Eq.~(\ref{1stLaw}) is obtained. Equation (\ref{1stLaw}) corresponds to a 1-D form of the first law of thermodynamics, proving the divergence equation as a consistent energy balance. Then, for the case where the $c_p$ is a linear function of the temperature, $c_p=aT +b$, we have
 \begin{eqnarray}
   \frac{ \dq'''}{\rho_\infty u_\infty} \Delta x &=&  T^2 \frac{a}{2} +bT -  (T_\infty^2 \frac{a}{2} +bT_\infty) \label{LinearCP}
 \end{eqnarray}
- Substituting in Eq.~(\ref{LinearCP}) for $a=0.1584$ J/kg/K$^2$ and $b=953.5650$ J/kg/K (these coefficients give $c_p(T_\infty)=1000$ J/kg/K) the temperature downstream of the heat source is computed to be 499.2~K. Correspondingly, the density and velocity are, $\rho_1$= 0.7046~\si{kg/m^3} and $u_1= 1.7030$~m/s. To determine the drop in pressure, Eq.~(\ref{mom1d}) is written in discretized form as in the previous verification. Then assuming that the subscript 0 refers to the cell containing the heat source, 1 to the first cell downstream, and -1 to the first cell upstream. The velocity in cell 0 is the approximated as the average of the velocity upstream and downstream, $u_0=1.3515$~m/s.
+Substituting in Eq.~(\ref{LinearCP}) for $a=0.1584$~J/kg/K$^2$ and $b=953.5650$~J/kg/K (these coefficients give $c_p(T_\infty)=1000$~J/kg/K) the temperature downstream of the heat source is computed to be 499.2~K. Correspondingly, the density and velocity are, $\rho_1=0.7046$~\si{kg/m^3} and $u_1= 1.7030$~m/s. To determine the drop in pressure, Eq.~(\ref{mom1d}) is written in discretized form as in the previous verification. Then assuming that the subscript 0 refers to the cell containing the heat source, 1 to the first cell downstream, and -1 to the first cell upstream. The velocity in cell 0 is the approximated as the average of the velocity upstream and downstream, $u_0=1.3515$~m/s.
 \begin{eqnarray}
    \tp_1 - \tp_0    &=& - \frac{u_1^2 - u_0^2}{2}   \rho_1    \approx -0.3783 \; \hbox{Pa} \\
    \tp_0 - \tp_{-1} &=& - \frac{u_0^2 - u_{-1}^2}{2}  \rho_0  \approx -0.3936 \; \hbox{Pa}
@@ -1670,7 +1666,7 @@ Overall, the agreement between the FDS simulations and the CBC data is satisfact
 
 In the previous section, all calculations were performed with a constant and uniform Smagorinsky coefficient, $C_{\rm s} = 0.2$.  For the canonical case of homogeneous decaying isotropic turbulence -- \emph{at sufficiently high Reynolds number} -- this model is sufficient.  However, we noticed that even for the isotropic turbulence problem when the grid Reynolds number is low (i.e., the flow is well-resolved) the constant coefficient model tends to over predict the dissipation of kinetic energy (see Fig.~\ref{fig_cbc_energy}).  This is because the eddy viscosity does not converge to zero at the proper rate; so long as strain is present in the flow (the magnitude of the strain rate tensor is nonzero), the eddy viscosity will be nonzero.  This violates a guiding principle in LES development: that the method should converge to a DNS if the flow field is sufficiently resolved.
 
-The dynamic procedure for calculating the model coefficient (set \ct{TURBULENCE_MODEL=`DYNAMIC SMAGORINSKY'} on \ct{MISC}) alleviates this problem.  The basis of the model is that the coefficient should be the same for two different filter scales within the inertial subrange.  Details of the procedure are explained in the following references \cite{Germano:1991,PinoMartin:2000,Moin:1991,Lund:1997,FDS_Math_Guide}.  Here we present results for the implementation of the dynamic model in FDS.  In Fig.~\ref{fig_c_smag} we show contours of the Smagorinsky coefficient $C_{\rm s}(\mathbf{x},t)$ at a time midway through a $64^3$ simulation of the CBC experiment.  Notice that the coefficient ranges from 0.00 to roughly 0.30 within the domain with the average value falling around 0.17.
+The dynamic procedure for calculating the model coefficient (set \ct{TURBULENCE_MODEL='DYNAMIC SMAGORINSKY'} on \ct{MISC}) alleviates this problem.  The basis of the model is that the coefficient should be the same for two different filter scales within the inertial subrange.  Details of the procedure are explained in the following references \cite{Germano:1991,PinoMartin:2000,Moin:1991,Lund:1997,FDS_Math_Guide}.  Here we present results for the implementation of the dynamic model in FDS.  In Fig.~\ref{fig_c_smag} we show contours of the Smagorinsky coefficient $C_{\rm s}(\mathbf{x},t)$ at a time midway through a $64^3$ simulation of the CBC experiment.  Notice that the coefficient ranges from 0.00 to roughly 0.30 within the domain with the average value falling around 0.17.
 
 \begin{figure}[t]
 \centering
@@ -2393,7 +2389,7 @@ This case is similar to Case~3. A 0.2~m by 0.2~m solid surface undergoes a react
 \subsection{Mass Flux through Domain Boundaries (\texorpdfstring{\ct{mass_flux_wall}}{mass\_flux\_wall})}
 \label{mass_flux_wall}
 
-This set of tests considers a specified mass injection of water vapor from a \ct{VENT} on the floor of a compartment.  The entire top of the compartment is \ct{OPEN} to the ambient.  The lighter water vapors are buoyant, so they rise creating a turbulent flow into and out of the domain.  Therefore, the input is steady, while the outflow of water vapor is quite chaotic.  To judge whether a proper mass balance is achieved by FDS we must monitor not only the inflow and outflow, but also the total mass of water vapor in the domain at a given time.  Therefore, we add \ct{DEVC} of quantity \ct{MASS_FLUX_WALL} and \ct{STATISTICS=`SURFACE INTEGRAL`} for inflow and outflow, and we also add \ct{MASS_FILE=.TRUE.} to the \ct{DUMP} line to monitor the total water vapor at any point in time in the domain.  With $\rho$ and $Y_{\mbox{\tiny H2O}}$ denoting the local mass density and mass fraction of water vapor in a cell, and with $\dot{m}_{\mbox{\tiny H2O}}^{\prime\prime}$ denoting the flux of water vapor at a cell face on the domain boundary, the mass balance may be written as,
+This set of tests considers a specified mass injection of water vapor from a \ct{VENT} on the floor of a compartment.  The entire top of the compartment is \ct{OPEN} to the ambient.  The lighter water vapors are buoyant, so they rise creating a turbulent flow into and out of the domain.  Therefore, the input is steady, while the outflow of water vapor is quite chaotic.  To judge whether a proper mass balance is achieved by FDS we must monitor not only the inflow and outflow, but also the total mass of water vapor in the domain at a given time.  Therefore, we add \ct{DEVC} of quantity \ct{MASS_FLUX_WALL} and \ct{STATISTICS='SURFACE INTEGRAL'} for inflow and outflow, and we also add \ct{MASS_FILE=.TRUE.} to the \ct{DUMP} line to monitor the total water vapor at any point in time in the domain.  With $\rho$ and $Y_{\mbox{\tiny H2O}}$ denoting the local mass density and mass fraction of water vapor in a cell, and with $\dot{m}_{\mbox{\tiny H2O}}^{\prime\prime}$ denoting the flux of water vapor at a cell face on the domain boundary, the mass balance may be written as,
 \begin{equation}
 \label{eq:H2O_mass_balance}
 \frac{\mbox{d}}{\mbox{d}t} \left( \int_{V} \rho Y_{\mbox{\tiny H2O}} \,\mbox{d}V \right) + \int_{S_{out}} \dot{m}_{\mbox{\tiny H2O}}^{\prime\prime} \,\mbox{d}S - \int_{S_{in}} \dot{m}_{\mbox{\tiny H2O}}^{\prime\prime} \,\mbox{d}S = 0
@@ -2413,7 +2409,7 @@ Figure \ref{fig:H2O_mass_balance} shows the results of two cases that test the m
 \subsection{Mass Balance on a Gas Control Volume (\texorpdfstring{\ct{mass_balance_gas_volume}}{mass\_balance\_gas\_volume})}
 \label{mass_balance_gas_volume}
 
-Using the same computational setup as the \ct{mass_flux_wall} series above, the \ct{mass_balance_gas_volume} test case defines a control volume (CV) internal to the computational domain, 6 m on a side (from 2 m to 8 m in each direction).  The mass of water in the CV is output using a \ct{SPATIAL_STATISTIC=`VOLUME INTEGRAL`} with \ct{QUANTITY=`DENSITY`} of the lumped species for water and the flows into and out of the CV are obtained using \ct{QUANTITY=`TOTAL MASS FLUX X`}, etc., with \ct{SPATIAL_STATISTIC=`AREA INTEGRAL`}. Figure \ref{fig:mass_balance_gas_volume} shows the resulting balance of accumulation (dm/dt) and the inflow and outflow of the control volume.
+Using the same computational setup as the \ct{mass_flux_wall} series above, the \ct{mass_balance_gas_volume} test case defines a control volume (CV) internal to the computational domain, 6 m on a side (from 2 m to 8 m in each direction).  The mass of water in the CV is output using a \ct{SPATIAL_STATISTIC='VOLUME INTEGRAL'} with \ct{QUANTITY='DENSITY'} of the lumped species for water and the flows into and out of the CV are obtained using \ct{QUANTITY='TOTAL MASS FLUX X'}, etc., with \ct{SPATIAL_STATISTIC='AREA INTEGRAL'}. Figure \ref{fig:mass_balance_gas_volume} shows the resulting balance of accumulation (dm/dt) and the inflow and outflow of the control volume.
 
 \begin{figure}[ht]
 \centering
@@ -4124,7 +4120,7 @@ Figure \ref{fig:EDC_load_bal_methane_smooke} shows the load-balancing test for t
 \includegraphics[height=2.15in]{SCRIPT_FIGURES/EDC_load_bal_Methane_Smooke_TOT} &
 \includegraphics[height=2.15in]{SCRIPT_FIGURES/EDC_load_bal_Methane_Smooke_DEVC}
 \end{tabular*}
-\caption[Results of the \ct{comb\_load\_balance} test cases]{Combustion load balance case for mixing with detailed chemistry using Methane\_Smooke detailed chemical mechanism. The initial unmixed fraction is 1.0 and mixing time is 0.01 s.}
+\caption[Results of the \ct{comb\_load\_balance} test cases]{Combustion load balance case for mixing with detailed chemistry using Methane\_Smooke detailed chemical mechanism. The initial unmixed fraction is 0.98.}
 \label{fig:EDC_load_bal_methane_smooke}
 \end{figure}
 
@@ -7828,6 +7824,7 @@ In this test, a \ct{GEOM} cube is heated from below by a surface at a fixed temp
 \section{Statistical Quantities}
 
 \subsection{RMS, Co-Variance, and Cross-Correlation (\texorpdfstring{\ct{rms\_cov\_corr}}{rms\_cov\_corr})}
+\label{rms_cov_corr}
 
 FDS can output the root mean square (RMS), co-variance, and cross-correlation for both point and line \ct{DEVC} outputs.  To test these outputs a 1 m$^3$ box with open sides and a 10 cm grid size is defined with two inlet vents centered on adjacent faces.  This results in two orthogonal flow streams that collide at the center of the box and exit diagonally.  Within the diagonal portion of the flow, are placed point measurements for the FDS outputs of the u-velocity RMS, the u-velocity/w-velocity co-variance, and the u-velocity/w-velocity cross-correlation.
 

@@ -1,8 +1,4 @@
-#!/usr/bin/env python3
-# McGrattan
-# 2-26-2018
-# umd_line_burner_process.py
-#
+
 # Read and process FDS output files for UMD Line Burner
 
 import os
@@ -38,10 +34,10 @@ for i_fuel in range(2):
 
         # Locate columns (match MATLAB’s strcmp behavior exactly)
         Time_idx = dev_headers.index('Time')
-        XO2_idx = dev_headers.index('"XO2"')
-        qrad1_idx = dev_headers.index('"qrad1"')
-        qrad2_idx = dev_headers.index('"qrad2"')
-        Lf_idx = dev_headers.index('"L_F"')
+        XO2_idx = dev_headers.index('XO2')
+        qrad1_idx = dev_headers.index('qrad1')
+        qrad2_idx = dev_headers.index('qrad2')
+        Lf_idx = dev_headers.index('L_F')
 
         HRR_idx = hrr_headers.index('HRR')
         Qrad_idx = hrr_headers.index('Q_RADI')
