@@ -899,6 +899,8 @@ TYPE IGNITION_ZONE_TYPE
    REAL(EB) :: Y2            !< Upper y bound of Ignition Zone
    REAL(EB) :: Z1            !< Lower z bound of Ignition Zone
    REAL(EB) :: Z2            !< Upper z bound of Ignition Zone
+   REAL(EB) :: TMP           !< Temperature of Ignition Zone
+   REAL(EB) :: ZETA          !< Unmixed fraction
    INTEGER :: DEVC_INDEX=0   !< Index of device controlling the status of the zone
    CHARACTER(LABEL_LENGTH) :: DEVC_ID='null'  !< Name of device controlling the status of the zone
 END TYPE IGNITION_ZONE_TYPE
@@ -908,6 +910,8 @@ REAL(EB) :: ODE_MIN_ATOL= -1._EB
 LOGICAL  :: EQUIV_RATIO_CHECK = .FALSE.
 REAL(EB) :: MIN_EQUIV_RATIO=0.1_EB
 REAL(EB) :: MAX_EQUIV_RATIO=20.0_EB
+REAL(EB) :: DTMP_MAX = 400._EB
+REAL(EB) :: DT_MIN_FOR_Q = 1.E-5_EB
 LOGICAL  :: DO_CHEM_LOAD_BALANCE = .FALSE.
 INTEGER  :: MAX_CVODE_SUBSTEPS=100000
 INTEGER  :: CVODE_MAX_TRY=4
@@ -916,6 +920,7 @@ INTEGER  :: CVODE_ERR_CODE_MIN=-100
 INTEGER  :: CVODE_ERR_CODE_MAX=100
 INTEGER  :: CVODE_WARNING_CELLS(-100:100)! Index of the array is error code and value is Cell count
 CHARACTER(LEN=100) :: CVODE_WARN_MESSAGES(-100:100)
+INTEGER :: Q_CAPPED_CELLS=0
 
 ! FOR WRITING CVODE SUBSTEPS
 LOGICAL  :: WRITE_CVODE_SUBSTEPS = .FALSE.
@@ -925,7 +930,11 @@ INTEGER :: TOTAL_SUBSTEPS_TAKEN
 ! Adiabatic flame temperature calculation
 CHARACTER(LABEL_LENGTH) :: FUEL_ID_FOR_AFT='null'
 INTEGER :: I_FUEL,I_CO2,I_H2O,I_O2 ! Store the index of the species in the ZZ array.
-LOGICAL  :: USE_MIXED_ZN_AFT_TMP = .FALSE.
+
+INTEGER :: CELL_TMP_MODEL=1
+INTEGER :: AFT_EVERYWHERE_MODEL=2
+INTEGER :: SOURCE_MIXZN_TMP_MODEL=3
+INTEGER :: MIXED_ZN_TMP_MODEL=1 ! 1-'CELL TMP', 2-'AFT EVERYWHERE', 3-'SRC MIXZN TMP'
 
 ! Mixing
 REAL(EB) :: ZETA_ARTIFICAL_MIN_LIMIT=0.99_EB

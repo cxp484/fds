@@ -725,6 +725,9 @@ MAIN_LOOP: DO
          CALL VELOCITY_PREDICTOR(T+DT,DT,DT_NEW,NM)
       ENDDO PREDICT_VELOCITY_LOOP
 
+      ! Decide timestep based on Qdot
+      !CALL CHECK_COMBUSTION_DT(DT_NEW)
+      
       ! Check if there is a numerical instability after updating the velocity field. If there is, exit this loop, finish the time
       ! step, and stop the code.
 
@@ -1015,6 +1018,10 @@ MAIN_LOOP: DO
          RSRT_COUNTER(1) = RSRT_COUNTER(1) + 1
       ENDIF
    ENDIF
+
+   DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
+      MESHES(NM)%TMP_MIX_OLD=MESHES(NM)%TMP_MIX
+   ENDDO
 
    ! Check for abnormal run stop
 
