@@ -79,7 +79,6 @@ if "%FOUND_TAG%" == "%LIB_TAG%" (
     git checkout %LIB_TAG%
 ) else (
     echo Your SUNDIALS repository is not up to date with the required tag: %LIB_TAG%.
-    echo Fetching SUNDIALS repository to make it up-to-date...
     echo The FDS build requires SUNDIALS version %LIB_TAG%. Please update your SUNDIALS repository.
     pause
     exit /b 1
@@ -124,8 +123,8 @@ cmake ..\  ^
 -DBUILD_SHARED_LIBS=OFF ^
 -DCMAKE_INSTALL_LIBDIR="lib" ^
 -DCMAKE_MAKE_PROGRAM="%CMAKE_MAKE_PROGRAM%" ^
--DCMAKE_C_FLAGS_RELEASE="${CMAKE_C_FLAGS_RELEASE} /MT" ^
--DCMAKE_C_FLAGS_DEBUG="${CMAKE_C_FLAGS_DEBUG} /MTd"
+-DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded" ^
+-DSUNDIALS_LOGGING_LEVEL=0
 
 ::*** build and install sundials
 
