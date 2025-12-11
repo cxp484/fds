@@ -15,15 +15,10 @@ datadir = '../../Verification/Radiation/'
 plotdir = '../../Manuals/FDS_Verification_Guide/SCRIPT_FIGURES/'
 filename = ['radiating_polygon_square_20_line.csv','radiating_polygon_square_40_line.csv','radiating_polygon_square_80_line.csv']
 
-skip_case = False
-
 for i in range(len(filename)):
    name = datadir+filename[i]
    if not os.path.exists(name):
-      skip_case = True
       print('Error: File ', filename[i], ' does not exist. Skipping case.')
-
-if skip_case: quit()
 
 flux_20 = pd.read_csv(datadir+filename[0],skiprows=2,header=None)
 flux_40 = pd.read_csv(datadir+filename[1],skiprows=2,header=None)
@@ -57,8 +52,9 @@ fig = fdsplotlib.plot_to_fig(x_data=z, y_data=flux, marker_style='k-',
       revision_label=version_string,x_min=0,x_max=1,y_min=20,y_max=160,
       plot_title = 'Radiative Flux from a Hot Square Plate',
       data_label='Exact',
-      y_label='Radiative Heat Flux (kW/m$^2$)',
-      x_label='Distance from Plate (m)')
+      y_label='Radiative Heat Flux (kW/m²)',
+      x_label='Distance from Plate (m)',
+      legend_location='lower left')
 
 fdsplotlib.plot_to_fig(x_data=1-flux_20[0], y_data=flux_20[1], marker_style='r-',
       figure_handle=fig,

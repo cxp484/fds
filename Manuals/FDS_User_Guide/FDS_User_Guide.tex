@@ -991,12 +991,11 @@ The pressure solver in FDS employs Fast Fourier Transforms (FFTs) in the $y$ and
 \subsection{Two-Dimensional and Axially-Symmetric Calculations}
 \label{info:2D}
 
-The governing equations solved in FDS are written in terms of a three dimensional Cartesian coordinate system. However, a two dimensional Cartesian or two dimensional cylindrical (axially-symmetric) calculation can be performed by setting the \ct{J} in the \ct{IJK} triplet to 1 on the \ct{MESH} line. For axial symmetry, add \ct{CYLINDRICAL=T} to the \ct{MESH} line, and the coordinate $x$ is then interpreted as the radial coordinate $r$. If more than one mesh is used, all the meshes must be specified as 2-D or \ct{CYLINDRICAL}---you cannot mix 2-D, 3-D and cylindrical geometries. No boundary conditions should be set at the planes $y=\hbox{\tt YMIN=XB(3)}$ or $y=\hbox{\tt YMAX=XB(4)}$, nor at $r=\hbox{\tt XMIN=XB(1)}$ in an axially-symmetric calculation if $r=\hbox{XB(1)=0}$ (Note that \ct{XB(1)} does not have to be 0). For better visualizations, the difference between \ct{XB(4)} and \ct{XB(3)} should be small so that the Smokeview rendering appears to be in 2-D. An example of an axially-symmetric helium plume is given in Sec.~\ref{baroclinic_torque}.
-
-When processing results for a \ct{CYLINDRICAL} simulation, note that integrated output quantities with the \ct{SPATIAL_STATISTIC} attribute apply only to the specified 2-D or cylindrical coordinates. Thus, the cylindrical coordinates define a cylindrical sector, like a slice of cake, even though Smokeview will not render it this way. The fully integrated quantity can be calculated by multiplying the reported value by $2 \pi \, \delta\theta$, where $\delta\theta$ is the difference between \ct{YMAX} and \ct{YMIN} in radians. The values chosen for \ct{YMAX} and \ct{YMIN} do not matter as long as the rendering in Smokeview is to your liking.
+The governing equations solved in FDS are written in terms of a three-dimensional Cartesian coordinate system. However, a two-dimensional Cartesian or two-dimensional cylindrical (axially-symmetric) calculation can be performed by setting the \ct{J} in the \ct{IJK} triplet to 1 on the \ct{MESH} line. For axial symmetry, add \ct{CYLINDRICAL=T} to the \ct{MESH} line, and the coordinate $x$ is then interpreted as the radial coordinate $r$. If more than one mesh is used, all the meshes must be specified as 2-D or \ct{CYLINDRICAL}---you cannot mix 2-D, 3-D and cylindrical geometries. No boundary conditions should be set at the planes $y=\hbox{\tt YMIN=XB(3)}$ or $y=\hbox{\tt YMAX=XB(4)}$, nor at $r=\hbox{\tt XMIN=XB(1)}$ in an axially-symmetric calculation if $r=\hbox{XB(1)=0}$ (Note that \ct{XB(1)} does not have to be 0). For better visualizations, the difference between \ct{XB(4)} and \ct{XB(3)} should be small so that the Smokeview rendering appears to be in 2-D. An example of an axially-symmetric helium plume is given in Sec.~\ref{baroclinic_torque}.
 
 When performing solid phase heat transfer while using a 2-D \ct{CYLINDRICAL} coordinate system, you must designate \ct{GEOMETRY='CYLINDRICAL'} on a surface (\ct{SURF} line) that is facing radially outward (positive $r$ direction) or \ct{GEOMETRY='INNER CYLINDRICAL'} on a surface that is facing radially inward (negative $r$ direction). In the latter instance, you must also specify the \ct{INNER_RADIUS} (m) of the cylinder. For the outer cylindrical boundary, specify an \ct{INNER_RADIUS} if appropriate. Its default value is 0~m. Because your inward and outward facing boundaries might occur at various radii, you must create separate \ct{SURF} lines for each with the appropriate values of \ct{GEOMETRY} and \ct{INNER_RADIUS}. For an obstruction (\ct{OBST}), use \ct{SURF_ID6} to assign individual \ct{SURF ID}s to each of the six faces. Because this is a 2-D simulation, the third and fourth entries representing the \ct{SURF ID}s in the $y$ or angular direction can just be designated \ct{'INERT'}.
 
+When processing results for a \ct{CYLINDRICAL} simulation, note that integrated output quantities with the \ct{SPATIAL_STATISTIC} attribute refer to the volume or surface area of the entire cylinder, not just the wedge. Smokeview renders the wedge as a 2-D slice. The values chosen for \ct{YMAX} and \ct{YMIN} do not matter as long as the rendering in Smokeview is to your liking. For a 2-D, non-cylindrical geometry, spatially integrated quanties shall be output in units of the quantity per unit meter.
 
 \subsection{Multiple Meshes}
 \label{info:multimesh}
@@ -3079,7 +3078,7 @@ The solid phase reaction represented by Fig.~\ref{pyrolysis} is fairly simple---
 \label{pyrolysis_2}
 \end{figure}
 
-The plot in Fig.~\ref{pyrolysis_2} contains two sets of curves. The solid curves represent the solution of the set of equations computed using a Matlab ODE solver, and the underlying dashed curves are a ``fit'' of the Matlab solution using FDS. The \ct{MATL} line for the solid material contains the following three parameters that define its decomposition:
+The plot in Fig.~\ref{pyrolysis_2} contains two sets of curves. The solid curves represent the solution of the set of equations computed using a numerical ODE solver, and the underlying dashed curves are a ``fit'' of the solution using FDS. The \ct{MATL} line for the solid material contains the following three parameters that define its decomposition:
 \begin{lstlisting}
 &MATL ID                    = '...'
       ...
@@ -3087,7 +3086,7 @@ The plot in Fig.~\ref{pyrolysis_2} contains two sets of curves. The solid curves
       PYROLYSIS_RANGE       = 100.
       HEATING_RATE          = 5.   /
 \end{lstlisting}
-The \ct{REFERENCE_TEMPERATURE} is the temperature in $^\circ$C where the mass loss rate is at its peak. The \ct{HEATING_RATE} is the linear temperature rise ($^\circ$C/min) used in the TGA experiment, which is represented here by the Matlab solution. The \ct{PYROLYSIS_RANGE} is the approximate ``width'' of the second red hump in Fig.~\ref{pyrolysis_2}, fit by inspection. That is, the value of 100~$^\circ$C was chosen by trial and error. This is typically how one would choose kinetic parameters in FDS to match a given TGA curve.
+The \ct{REFERENCE_TEMPERATURE} is the temperature in $^\circ$C where the mass loss rate is at its peak. The \ct{HEATING_RATE} is the linear temperature rise ($^\circ$C/min) used in the TGA experiment, which is represented here by the numerical solution. The \ct{PYROLYSIS_RANGE} is the approximate ``width'' of the second red hump in Fig.~\ref{pyrolysis_2}, fit by inspection. That is, the value of 100~$^\circ$C was chosen by trial and error. This is typically how one would choose kinetic parameters in FDS to match a given TGA curve.
 
 
 
@@ -3325,7 +3324,7 @@ Note that the 3-D heat conduction equation is solved via 1-D segments in all thr
 
 \subsection{Delamination of layers}
 \label{info:surf_delamination}
-Delamination (fall-off) of material layers can occur e.g. in glued materials, such as Cross-Laminated Timber (CLT). Two different criteria can be used to enforce a delamination of \ct{SURF} layers: \ct{DELAMINATION\_TMP(NL)} sets the temperature criterion; if the last cell of the layer \ct{NL} exceeds this temperature, all layers from the first to \ct{NL}'th (of this particular wall cell) will be removed. Their mass will simply disappear from the computation, and the following layer will befome the surface of the wall. Similarly, specifying \ct{DELAMINATION\_DENSITY(NL)} will remove the layers 1 to \ct{NL} if the density of the \ct{NL}th layer's last cell decreases below the threshold.
+Delamination (fall-off) of material layers can occur e.g. in glued materials, such as Cross-Laminated Timber (CLT). Two different criteria can be used to enforce a delamination of \ct{SURF} layers: \ct{DELAMINATION_TMP(NL)} sets the temperature criterion; if the last cell of the layer \ct{NL} exceeds this temperature, all layers from the first to \ct{NL}'th (of this particular wall cell) will be removed. Their mass will simply disappear from the computation, and the following layer will befome the surface of the wall. Similarly, specifying \ct{DELAMINATION_DENSITY(NL)} will remove the layers 1 to \ct{NL} if the density of the \ct{NL}th layer's last cell decreases below the threshold.
 
 \newpage
 
@@ -7044,7 +7043,9 @@ Note that $\rho$ (kg/m$^3$) is the density and $c_p$ is the specific heat of the
 
 \subsection{Example}
 
-Figure~\ref{ABL_profiles} displays velocity and temperature profiles generated by FDS over a 1000~m square domain with periodic boundaries and a height of 200~m. The wind fields are generated using pressure gradient forces, $F$, of various values, and the ground is given several different values of \ct{CONVECTIVE_HEAT_FLUX} ($\dot{q}_{\rm c}''$) and surface \ct{ROUGHNESS} ($s$). Eqs.~(\ref{eq:roughness_conversion}) and (\ref{qdot_L}) are used to convert the specified $\dot{q}_{\rm c}''$ and $s$ to $L$ and $z_0$ that are then used to generate Monin-Obukhov velocity and temperature profiles with which to compare the simulations. Note that these simulations do not invoke the Monin-Obukhov profiles directly. Rather, the M-O profiles are used to test if the FDS simulations produce realistic vertical profiles using just a specified pressure gradient force, $F$, surface roughness, $s$, and surface heat flux, $\dot{q}_{\rm c}''$.
+Figure~\ref{ABL_profiles} displays velocity and temperature profiles generated by FDS over a 1000~m square domain with periodic boundaries and a height of 400~m. The wind fields are generated using a pressure gradient force, $F$, of various values, and the ground is given several different values of \ct{CONVECTIVE_HEAT_FLUX} ($\dot{q}_{\rm c}''$) and surface \ct{ROUGHNESS} ($s$). Eqs.~(\ref{eq:roughness_conversion}) and (\ref{qdot_L}) are used to convert the specified $\dot{q}_{\rm c}''$ and $s$ to $L$ and $z_0$ that are then used to generate Monin-Obukhov velocity and temperature profiles with which to compare the simulations. Note that these simulations do not invoke the Monin-Obukhov profiles directly. Rather, the M-O profiles are used to test if the FDS simulations produce realistic vertical profiles from the specified pressure gradient force, $F$, surface roughness, $s$, and surface heat flux, $\dot{q}_{\rm c}''$. The simulations are initialized with a temperature lapse rate of -0.01~K/m, and the laterial boundary condition is \ct{'PERIODIC FLOW ONLY'}, meaning that the velocity field is periodic but the temperature field is not. The upper boundary is \ct{'OPEN'} with a specified \ct{SPEED} that is approximately the same as that which is predicted by M-O theory. In this regard, the profiles are not predicted based solely on the pressure gradient force and ground properties. Rather, lateral and ceiling conditions are needed to match the resulting profiles.
+
+The purpose of this example is to demonstrate that you can establish a realistic temperature and velocity profile even when the ground surface is not flat. Simulations like those shown here can be used to test if a given pressure gradient force and a ground roughness and heat flux are appropriate for a simulation over complex terrain.
 
 \begin{figure}[p]
    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
@@ -9140,7 +9141,7 @@ Scheme                              & \ct{FLUX_LIMITER} \\
 Central differencing                & \ct{'CENTRAL'}  \\
 Godunov                             & \ct{'GODUNOV'}  \\
 Superbee (VLES, SVLES default)      & \ct{'SUPERBEE'}  \\
-CHARM (DNS, LES default)            & \ct{'CHARM'}  \\ 
+CHARM (DNS, LES default)            & \ct{'CHARM'}  \\
 \hline
 \end{tabular}
 \end{table}
@@ -9961,6 +9962,9 @@ A set of additional \ct{SPATIAL_STATISTIC}'s are available for use with \ct{QUAN
 \end{lstlisting}
 would output the total surface area in the volume \ct{XB} where the total heat flux exceeds 10~\unit{kW/m^2}.
 
+\subsubsection{Two-Dimensional and Cylindrical Coordinate Systems}
+
+If the computational domain is two-dimensional or cylindrical, some spatially-integrated quantities are adjusted to eliminate the dependence on the arbitrarily chosen $\delta y$ or $\delta \theta$. For a 2-D domain, a reported volume output will have units of m$^3$/m and an area output will have units of m$^2$/m. For a cylindrical domain, volume and area outputs are reported for the entire cylinder rather than the thin wedge on which the simulation is performed. This might cause confusion in cases where both the input parameters and simulation results involve volumetric or areal quantities; thus, it is good practice to perform a simple test case with a known result to verify that these adjustments have been performed properly.
 
 
 \subsection{Temporally-Integrated Outputs}
@@ -14254,9 +14258,9 @@ Keyword             & Type     & Description                      & Units       
 357  \> \ct{SURF ... has a specified HRRPUA/MLRPUA and a pyrolysis model.} \> Section~\ref{info:gas_burner}  \\
 359  \> \ct{SURF ... cannot have a specified velocity or volume flux.} \> Section~\ref{info:gas_burner}  \\
 360  \> \ct{SURF ... uses HRRPUA and species ... is the FUEL for ...} \> Section~\ref{info:gas_burner}  \\
-361  \> \ct{SURF ... uses HRRPUA and MASS_FRACTION but no REAC ...} \> Section~\ref{info:simple_chemistry}  \\
+361  \> \ct{SURF ... uses HRRPUA and MASS_FRACTION but no REAC ...} \> Section~\ref{info:gas_burner}  \\
 362  \> \ct{SURF ... uses MLRPUA and species ... is the FUEL for ...} \> Section~\ref{info:gas_burner}  \\
-363  \> \ct{SURF ... uses MLRPUA and MASS_FRACTION but no REAC ...} \> Section~\ref{info:simple_chemistry}  \\
+363  \> \ct{SURF ... uses MLRPUA and MASS_FRACTION but no REAC ...} \> Section~\ref{info:gas_burner}  \\
 364  \> \ct{SURF ... cannot specify mass fraction with mass flux ...} \> Section~\ref{info:MASS_FLUX}  \\
 365  \> \ct{SURF ... cannot specify mass fraction and outflow velocity.} \> Section~\ref{info:MASS_FLUX}  \\
 366  \> \ct{SURF ... cannot leak and specify flow or pyrolysis ...} \> Section~\ref{info:Leaks}  \\
@@ -14424,8 +14428,8 @@ Keyword             & Type     & Description                      & Units       
 610 \> \ct{HOLE ... Cannot overlap HOLEs with a DEVC or CTRL_ID.} \> Section~\ref{info:HOLE}  \\
 611 \> \ct{OBST ... has a BULK_DENSITY but zero volume.} \> Section~\ref{info:BURN_AWAY}  \\
 612 \> \ct{OBST ... must have a volume to be assigned HT3D.} \> Section~\ref{checkerboard}  \\
-614 \> \ct{OBST_ID ... cannot have a SURF with NODE_ID} \> Section~\ref{info:hvac_geom}  \\    
-615 \> \ct{OBST ... cannot overlap OBST ...}            \> Section~\ref{info:OVERLAY}  \\    
+614 \> \ct{OBST_ID ... cannot have a SURF with NODE_ID} \> Section~\ref{info:hvac_geom}  \\
+615 \> \ct{OBST ... cannot overlap OBST ...}            \> Section~\ref{info:OVERLAY}  \\
     \>                                                  \>                          \\
 701 \> \ct{problem with GEOM, local SURF_ID index ... out of bounds.} \> Section~\ref{info:GEOM_Basics}  \\
 702 \> \ct{problem with GEOM, SURF_IDS not defined properly.} \> Section~\ref{info:first_geom}  \\

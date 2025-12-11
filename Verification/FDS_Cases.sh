@@ -20,10 +20,10 @@ $QFDS -d Aerosols propane_flame_deposition_thermophoretic.fds
 $QFDS -d Aerosols propane_flame_deposition_turbulent.fds
 $QFDS -d Aerosols soot_oxidation_wall.fds
 
-$QFDS -p 36 -d Atmospheric_Effects atmospheric_boundary_layer_1.fds
-$QFDS -p 36 -d Atmospheric_Effects atmospheric_boundary_layer_2.fds
-$QFDS -p 36 -d Atmospheric_Effects atmospheric_boundary_layer_3.fds
-$QFDS -p 36 -d Atmospheric_Effects atmospheric_boundary_layer_4.fds
+$QFDS -p 16 -d Atmospheric_Effects atmospheric_boundary_layer_1.fds
+$QFDS -p 16 -d Atmospheric_Effects atmospheric_boundary_layer_2.fds
+$QFDS -p 16 -d Atmospheric_Effects atmospheric_boundary_layer_3.fds
+$QFDS -p 16 -d Atmospheric_Effects atmospheric_boundary_layer_4.fds
 $QFDS -d Atmospheric_Effects lee_waves.fds
 $QFDS -d Atmospheric_Effects stack_effect.fds
 $QFDS -d Atmospheric_Effects lapse_rate.fds
@@ -803,8 +803,8 @@ $QFDS -p 4 -d Scalar_Analytical_Solution soborot_godunov_square_wave_128.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_superbee_square_wave_16.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_superbee_square_wave_32.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_superbee_square_wave_64.fds
-$QFDS -p 4 -T db -d Scalar_Analytical_Solution soborot_superbee_square_wave_128.fds
-$QFDS      -T db -d Scalar_Analytical_Solution soborot_superbee_square_wave_128_1mesh.fds
+$QFDS -p 4 -d Scalar_Analytical_Solution soborot_superbee_square_wave_128.fds
+$QFDS      -d Scalar_Analytical_Solution soborot_superbee_square_wave_128_1mesh.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_charm_square_wave_16.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_charm_square_wave_32.fds
 $QFDS      -d Scalar_Analytical_Solution soborot_charm_square_wave_64.fds
