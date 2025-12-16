@@ -42,7 +42,6 @@ TYPE MESH_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: MU_DNS  !< Laminar viscosity (kg/m/s)
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: TMP     !< Gas temperature, \f$ T_{ijk} \f$ (K)
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: TMP_MIX !< Mixed zone gas temperature, \f$ T_{ijk} \f$ (K)
-   REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: TMP_MIX_OLD !< Previous timestep mixed zone gas temperature, \f$ T_{ijk} \f$ (K)
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: Q       !< Heat release rate per unit volume, \f$ \dot{q}_{ijk}''' \f$
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: KAPPA_GAS !< Radiation absorption coefficient by gas, \f$ \kappa_{ijk} \f$
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: CHI_R   !< Radiative fraction, \f$ \chi_{{\rm r},ijk} \f$
@@ -356,7 +355,7 @@ IMPLICIT NONE (TYPE,EXTERNAL)
 
 REAL(EB), POINTER, DIMENSION(:,:,:) :: &
    U,V,W,US,VS,WS,DDDT,D,DS,H,HS,KRES,FVX,FVY,FVZ,FVX_B,FVY_B,FVZ_B,FVX_D,FVY_D,FVZ_D,RHO,RHOS, &
-   MU,MU_DNS,TMP,TMP_MIX,TMP_MIX_OLD,Q,KAPPA_GAS,CHI_R,QR,QR_W,RADIATION_EMISSION,RADIATION_ABSORPTION,UII,RSUM,D_SOURCE, &
+   MU,MU_DNS,TMP,TMP_MIX,Q,KAPPA_GAS,CHI_R,QR,QR_W,RADIATION_EMISSION,RADIATION_ABSORPTION,UII,RSUM,D_SOURCE, &
    CSD2,MTR,MSR,WEM,MIX_TIME,CHEM_SUBIT,STRAIN_RATE,D_Z_MAX,PP_RESIDUAL,LES_FILTER_WIDTH,BFX,BFY,BFZ
 REAL(EB), POINTER, DIMENSION(:,:,:,:) :: ZZ,ZZS,REAC_SOURCE_TERM,DEL_RHO_D_DEL_Z,FX,FY,FZ, &
                                          SWORK1,SWORK2,SWORK3,SWORK4, &
@@ -521,7 +520,6 @@ RHO=>M%RHO
 RHOS=>M%RHOS
 TMP=>M%TMP
 TMP_MIX=>M%TMP_MIX
-TMP_MIX_OLD=>M%TMP_MIX_OLD
 CHEM_SUBIT=>M%CHEM_SUBIT
 CHEM_ACTIVE_CELLS=>M%CHEM_ACTIVE_CELLS
 CHEM_ACTIVE_CC=>M%CHEM_ACTIVE_CC

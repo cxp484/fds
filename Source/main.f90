@@ -1019,10 +1019,6 @@ MAIN_LOOP: DO
       ENDIF
    ENDIF
 
-   DO NM=LOWER_MESH_INDEX,UPPER_MESH_INDEX
-      MESHES(NM)%TMP_MIX_OLD=MESHES(NM)%TMP_MIX
-   ENDDO
-
    ! Check for abnormal run stop
 
    CALL STOP_CHECK(1)  ! The argument 1 means that FDS will end unless there is logic associated with the STOP_STATUS
