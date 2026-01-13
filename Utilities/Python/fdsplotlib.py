@@ -106,28 +106,6 @@ def _compute_metrics_block(
 
     N, ncols = Y.shape
 
-    # --- comparison mask (like MATLAB) ---
-    comp_mask = np.isfinite(x)
-    if np.isfinite(comp_start):
-        comp_mask &= (x >= comp_start)
-    if np.isfinite(comp_end):
-        comp_mask &= (x <= comp_end)
-
-    if np.isfinite(dep_comp_start) or np.isfinite(dep_comp_end):
-        y0 = Y[:, 0]
-        dep_mask = np.isfinite(y0)
-        if np.isfinite(dep_comp_start):
-            dep_mask &= (y0 >= dep_comp_start)
-        if np.isfinite(dep_comp_end):
-            dep_mask &= (y0 <= dep_comp_end)
-        comp_mask &= dep_mask
-
-    if not np.any(comp_mask):
-        return np.array([]), [], []
-
-    x_sel = x[comp_mask]
-    Y_sel = Y[comp_mask, :]
-
     # --- support patterns like mean_1_2, max_2_1, end_1_2 ---
     # NOTE: we deliberately DO NOT parse "all_*_*" here.
     def _parse_stat_xy(m):
@@ -144,6 +122,28 @@ def _compute_metrics_block(
 
     metric_str = str(metric).strip().lower()
     base, idx_first, idx_second = _parse_stat_xy(metric_str)
+
+    # --- comparison mask (like MATLAB) ---
+    comp_mask = np.isfinite(x)
+    if np.isfinite(comp_start):
+        comp_mask &= (x >= comp_start)
+    if np.isfinite(comp_end):
+        comp_mask &= (x <= comp_end)
+
+    if np.isfinite(dep_comp_start) or np.isfinite(dep_comp_end):
+        y0 = Y[:, 0]
+        dep_mask = np.isfinite(y0)
+        if np.isfinite(dep_comp_start):
+            dep_mask &= (y0 >= dep_comp_start)
+        if np.isfinite(dep_comp_end):
+            dep_mask &= (y0 <= dep_comp_end)
+        comp_mask &= dep_mask
+
+    if not np.any(comp_mask) and metric_str != "slope":
+        return np.array([]), [], []
+
+    x_sel = x[comp_mask]
+    Y_sel = Y[comp_mask, :]
 
     vals = []
     titles = []
@@ -201,7 +201,7 @@ def _compute_metrics_block(
             out = np.nanmax(np.abs(yj - initial_value))
         elif metric_str == "slope":
             msk = np.isfinite(x_sel) & np.isfinite(yj)
-            out = np.polyfit(x_sel[msk], yj[msk], 1)[0] if msk.sum() >= 2 else np.nan
+            out = np.polyfit(x_sel[msk], yj[msk], 1)[0] if msk.sum() >= 2 else 0.0
         elif metric_str == "mean":
             out = abs(np.nanmean(yj) - initial_value)
         elif metric_str == "threshold":
@@ -271,6 +271,7 @@ def dataplot(config_filename, **kwargs):
     Save_Metric_Type = []
     Save_Measured_Quantity = []
     Save_Predicted_Quantity = []
+    Save_csv_rownum = []
 
     default_na = {
         '', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN',
@@ -361,6 +362,7 @@ def dataplot(config_filename, **kwargs):
             Save_Predicted_Metric.append(np.nan)
             Save_Measured_Quantity.append(None)
             Save_Predicted_Quantity.append(None)
+            Save_csv_rownum.append(None)
 
         # ---------------------- LOAD EXP ----------------------
         E = read_csv_cached(expdir + pp.d1_Filename,
@@ -511,10 +513,12 @@ def dataplot(config_filename, **kwargs):
 
                 Save_Measured_Metric[-1] = np.array(vals_meas_list, dtype=object)
                 Save_Measured_Quantity[-1] = np.array([qty_label] * len(vals_meas_list), dtype=object)
+                Save_csv_rownum[-1] = csv_rownum
 
             except Exception as e:
                 print(f"[dataplot] Error computing measured metric for {pp.Dataname}: {e}")
                 Save_Measured_Metric[-1] = np.array([])
+                Save_Measured_Quantity[-1] = []
                 Save_Measured_Quantity[-1] = []
 
         # ---------------------- LOAD MODEL ----------------------
@@ -886,7 +890,7 @@ def dataplot(config_filename, **kwargs):
         Save_Quantity, Save_Group_Style, Save_Fill_Color, Save_Group_Key_Label,
         Save_Measured_Metric, Save_Predicted_Metric, Save_Dataname, Save_Plot_Filename,
         Save_Dep_Title, Save_Error_Tolerance, Save_Metric_Type,
-        Save_Measured_Quantity, Save_Predicted_Quantity,
+        Save_Measured_Quantity, Save_Predicted_Quantity, Save_csv_rownum,
     ]
 
     for i, (m, p, name, qty) in enumerate(zip(
@@ -1866,113 +1870,6 @@ def define_plot_parameters(D, irow, lightweight=False):
     return d
 
 
-def define_qrow_variables(Q, j):
-    """
-    Define scatterplot parameters from the Scatterplot_Inputs.csv row j.
-
-    Mirrors the MATLAB 'define_qrow_variables.m' behavior and returns
-    a simple Python object with all scatterplot configuration fields.
-
-    Parameters
-    ----------
-    Q : pandas.DataFrame
-        The scatterplot input file loaded by pandas.read_csv().
-    j : int
-        Row index (0-based).
-
-    Returns
-    -------
-    q : object
-        Object with attributes corresponding to scatterplot input fields.
-    """
-
-    class qrow:
-        def __init__(self):
-            self.Scatter_Plot_Title  = Q.loc[j, "Scatter_Plot_Title"]
-            self.Ind_Title           = Q.loc[j, "Ind_Title"]
-            self.Dep_Title           = Q.loc[j, "Dep_Title"]
-            self.Plot_Min            = Q.loc[j, "Plot_Min"]
-            self.Plot_Max            = Q.loc[j, "Plot_Max"]
-            self.Title_Position      = Q.loc[j, "Title_Position"]
-            self.Key_Position        = Q.loc[j, "Key_Position"]
-            self.Paper_Width_Factor  = Q.loc[j, "Paper_Width_Factor"]
-            self.Sigma_E             = Q.loc[j, "Sigma_E"]
-            self.Weight_Data         = Q.loc[j, "Weight_Data"]
-            self.Plot_Type           = Q.loc[j, "Plot_Type"]
-            self.Plot_Filename       = Q.loc[j, "Plot_Filename"]
-
-        def __repr__(self):
-            return str(self.__dict__)
-
-    q = qrow()
-
-    # Sanitize only human-readable fields
-    q.Scatter_Plot_Title = sanitize(safe_strip(q.Scatter_Plot_Title))
-    q.Ind_Title = sanitize(safe_strip(q.Ind_Title))
-    q.Dep_Title = sanitize(safe_strip(q.Dep_Title))
-    q.Plot_Filename = safe_strip(q.Plot_Filename)
-    q.Key_Position = safe_strip(q.Key_Position)
-    q.Plot_Type = safe_strip(q.Plot_Type)
-
-    # Parse numeric fields
-    def to_float(val):
-        try:
-            return float(val)
-        except Exception:
-            return np.nan
-
-    q.Plot_Min = to_float(q.Plot_Min)
-    q.Plot_Max = to_float(q.Plot_Max)
-    q.Paper_Width_Factor = to_float(q.Paper_Width_Factor)
-    q.Sigma_E = to_float(q.Sigma_E)
-
-    # Parse Title_Position as [x, y] floats
-    if isinstance(q.Title_Position, str):
-        try:
-            vals = [float(x) for x in q.Title_Position.split()]
-            if len(vals) == 2:
-                q.Title_Position = vals
-            else:
-                q.Title_Position = [0.03, 0.95]
-        except Exception:
-            q.Title_Position = [0.03, 0.95]
-    else:
-        q.Title_Position = [0.03, 0.95]
-
-    # Normalize Weight_Data (yes/no → bool)
-    if isinstance(q.Weight_Data, str):
-        q.Weight_Data = q.Weight_Data.strip().lower() == "yes"
-    else:
-        q.Weight_Data = bool(q.Weight_Data)
-
-    return q
-
-
-def sanitize(text: str) -> str:
-    """Escape LaTeX specials outside math mode ($...$)."""
-    if not isinstance(text, str):
-        return text
-
-    specials = {
-        "&": r"\&", "%": r"\%", "_": r"\_", "#": r"\#",
-        "$": r"\$", "{": r"\{", "}": r"\}", "^": r"\^{}", "~": r"\~{}",
-    }
-
-    # Split into math and text segments
-    import re
-    parts = re.split(r"(\$.*?\$)", text)
-    sanitized = []
-    for part in parts:
-        if part.startswith("$") and part.endswith("$"):
-            sanitized.append(part)  # math untouched
-        else:
-            s = part
-            for k, v in specials.items():
-                s = s.replace(k, v)
-            sanitized.append(s)
-    return "".join(sanitized)
-
-
 def safe_strip(val):
     """Strip whitespace safely from strings; return empty string otherwise."""
     return val.strip() if isinstance(val, str) else ""
@@ -2036,6 +1933,7 @@ def scatplot(saved_data, drange, **kwargs):
         Save_Metric_Type,
         Save_Measured_Quantity,
         Save_Predicted_Quantity,
+        Save_csv_rownum
     ) = saved_data
 
     Q = pd.read_csv(Scatterplot_Inputs_File)
@@ -2095,6 +1993,28 @@ def scatplot(saved_data, drange, **kwargs):
             i for i, q in enumerate(Save_Quantity)
             if str(q).strip().lower() == Scatter_Plot_Title.strip().lower()
         ]
+
+        # --- Write raw scatter values CSV (pre-mask, MATLAB-faithful) ---
+        if Stats_Output.lower() != "verification":
+            if (
+                Save_Measured_Metric is not None
+                and Save_Predicted_Metric is not None
+                and len(Save_Measured_Metric) > 0
+                and len(Save_Predicted_Metric) > 0
+                and len(Save_Measured_Metric) == len(Save_Predicted_Metric)
+            ):
+                raw_csv = _write_raw_scatter_csv(
+                    Scatterplot_Dir,
+                    Scatter_Plot_Title,
+                    match_idx,
+                    Save_csv_rownum,
+                    Save_Dataname,
+                    Save_Measured_Metric,
+                    Save_Predicted_Metric,
+                )
+
+            # if verbose:
+            #     print(f"[scatplot] Wrote raw scatter CSV: {raw_csv}")
 
         if not match_idx:
             print(f"[scatplot] No dataplot entries for {Scatter_Plot_Title}")
@@ -2241,9 +2161,9 @@ def scatplot(saved_data, drange, **kwargs):
         weight = np.ones(n_pts)
 
         # MATLAB behavior: Weight_Data == 'yes' by default for validation
-        Weight_Data = True
+        Weight_Data = str(row.get("Weight_Data", "yes")).strip().lower()
 
-        if Weight_Data and n_pts > 0:
+        if Weight_Data == "yes" and n_pts > 0:
             max_meas = np.max(Measured_Values)
             bin_size = max_meas / 10.0
 
@@ -2406,6 +2326,68 @@ def scatplot(saved_data, drange, **kwargs):
 
     print("[scatplot] Completed successfully.")
     return
+
+
+def _write_raw_scatter_csv(
+    outdir,
+    scatter_title,
+    match_idx,
+    Save_csv_rownum,
+    Save_Dataname,
+    Save_Measured_Metric,
+    Save_Predicted_Metric,
+):
+    """
+    Write raw (pre-mask) measured/predicted values used by scatplot.
+    Values are rounded to 4 significant figures for clean CSV output.
+    """
+    import os
+    import csv
+    import numpy as np
+
+    # Match histogram naming convention
+    fname = (
+        "FDS_"
+        + scatter_title
+        .replace(" ", "_")
+        .replace(";", "")
+        .replace("/", "_")
+    )
+    csv_path = os.path.join(outdir, f"{fname}_raw_scatter_values.csv")
+
+    def _sig4(x):
+        """Round to 3 significant figures, preserving scientific notation."""
+        try:
+            return float(f"{float(x):.4g}")
+        except Exception:
+            return ""
+
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "csv_rownum",
+            "Dataname",
+            "Predicted_Values",
+            "Measured_Values",
+        ])
+
+        for idx in match_idx:
+            rownum = Save_csv_rownum[idx]
+            dataname = Save_Dataname[idx]
+
+            mvals = np.array(Save_Measured_Metric[idx], dtype=float).flatten()
+            pvals = np.array(Save_Predicted_Metric[idx], dtype=float).flatten()
+
+            n = min(len(mvals), len(pvals))
+            for k in range(n):
+                writer.writerow([
+                    rownum,
+                    dataname,
+                    _sig4(pvals[k]),
+                    _sig4(mvals[k]),
+                ])
+
+    return csv_path
 
 
 def statistics_output(
