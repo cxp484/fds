@@ -30,15 +30,10 @@ datadir = '../../Verification/Scalar_Analytical_Solution/';
 plotdir = '../../Manuals/FDS_Verification_Guide/SCRIPT_FIGURES/';
 filename = ['saad_512_cfl_1_mms.csv','saad_512_cfl_p5_mms.csv','saad_512_cfl_p25_mms.csv','saad_512_cfl_p125_mms.csv','saad_512_cfl_p0625_mms.csv']
 
-skip_case = False
-
 for i in range(len(filename)):
    name = datadir+filename[i]
    if not os.path.exists(name):
-      skip_case = True
       print('Error: File ', filename[i], ' does not exist. Skipping case.')
-
-if skip_case: quit()
 
 # Gather FDS results
 
@@ -124,7 +119,7 @@ fig = fdsplotlib.plot_to_fig(x_data=x, y_data=rho, marker_style='r--',
       revision_label=version_string,x_min=-1,x_max=1,y_min=0,y_max=5,
       data_label = 'Initial field',
       x_label='$x$ (m)',
-      y_label='Density (kg/m$^3$')
+      y_label='Density (kg/m³')
 
 fdsplotlib.plot_to_fig(x_data=x, y_data=rho_3, marker_style='r-',
    figure_handle=fig,
@@ -152,7 +147,7 @@ fig = fdsplotlib.plot_to_fig(x_data=x, y_data=rho_3-rho_2, marker_style='b-',
       revision_label=version_string,x_min=-1,x_max=1,y_min=-0.0006,y_max=0.0006,
       data_label = '$\\rho_3$ - $\\rho_2$',
       x_label='$x$ (m)',
-      y_label='Density (kg/m$^3$)')
+      y_label='Density (kg/m³)')
 
 fdsplotlib.plot_to_fig(x_data=x, y_data=rho_2-rho_1, marker_style='r-',
    figure_handle=fig,
@@ -172,15 +167,10 @@ plt.close()
 datadir = '../../Verification/Complex_Geometry/'
 filename = ['saad_CC_explicit_512_cfl_p25_mms.csv','saad_CC_explicit_512_cfl_p125_mms.csv','saad_CC_explicit_512_cfl_p0625_mms.csv']
 
-skip_case = False
-
 for i in range(len(filename)):
    name = datadir+filename[i]
    if not os.path.exists(name):
-      skip_case = True
       print('Error: File ', filename[i], ' does not exist. Skipping case.')
-
-if skip_case: quit()
 
 M1 = pd.read_csv(datadir+filename[0],skiprows=2,header=None)
 M2 = pd.read_csv(datadir+filename[1],skiprows=2,header=None)
@@ -264,7 +254,7 @@ fig = fdsplotlib.plot_to_fig(x_data=x, y_data=rho, marker_style='r--',
       revision_label=version_string,x_min=-1,x_max=1,y_min=0,y_max=5,
       data_label = 'Initial field',
       x_label='$x$ (m)',
-      y_label='Density (kg/m$^3$')
+      y_label='Density (kg/m³')
 
 fdsplotlib.plot_to_fig(x_data=x, y_data=rho_3, marker_style='r-',
    figure_handle=fig,
@@ -292,7 +282,7 @@ fig = fdsplotlib.plot_to_fig(x_data=x, y_data=rho_3-rho_2, marker_style='b-',
       revision_label=version_string,x_min=-1,x_max=1,y_min=-0.0006,y_max=0.0006,
       data_label = '$\\rho_3$ - $\\rho_2$',
       x_label='$x$ (m)',
-      y_label='Density (kg/m$^3$)')
+      y_label='Density (kg/m³)')
 
 fdsplotlib.plot_to_fig(x_data=x, y_data=rho_2-rho_1, marker_style='r-',
    figure_handle=fig,

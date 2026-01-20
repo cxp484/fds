@@ -10,27 +10,27 @@ This chapter contains a brief description of the experiments that were used for 
 \section{Aalto Woods Experiments}
 \label{Aalto_Woods_Description}
 
-Rinta-Paavola et al. developed a material model for Norway spruce and Scots pine woods to predict char front progress and heat release in burning timber~\cite{Rinta-Paavola:2023}. The material models are calibrated using temperature, mass loss rate and heat release rate measurements of wood specimens in a cone calorimeter. The model is intended for a number of different fire scenarios, such as fully developed fire with only little oxygen in the compartment, or the decay period after flaming with exposed char still smoldering. Cone calorimeter measurements were conducted under flaming, inert, and and smoldering conditions to replicate these scenarios. The estimated material models are able to predict the experiments in the scale of cone calorimeter.
+Rinta-Paavola et al.~developed a material model for Norway spruce and Scots pine woods to predict char front progress and heat release in burning timber~\cite{Rinta-Paavola:2023}. The material models are calibrated using temperature, mass loss rate and heat release rate measurements of wood specimens in a cone calorimeter. The model is intended for fully-developed compartment fires or the subsequent decay period with exposed, smoldering char. Cone calorimeter measurements were conducted under flaming, inert, and smoldering conditions to replicate these scenarios. The material models are able to predict the bench-scale experiments.
 
-The material model for spruce developed using cone calorimeter measurements is tested in prediction of heat release rates in two previously existing experiments: an ISO 9705 room corner test~\cite{Sundstrom:1998} (test code M12 in the original source) and a modified room corner test originally reported in Finnish in~\cite{Hietaniemi:2001}. English description of the modified test is available in~\cite{Hietaniemi:1}.
+The material model for spruce developed using cone calorimeter measurements is evaluated for its prediction of heat release rates in two previous experiments: an ISO~9705 room corner test~\cite{Sundstrom:1998} (test code M12 in the original source) and a modified room corner test originally reported in Finnish in~\cite{Hietaniemi:2001}. An English description of the modified test is available in Ref.~\cite{Hietaniemi:1}.
 
-In a room corner test, the walls and the ceiling of a 2.4~m by 3.6~m by 2.4~m (width, length, height) test compartment are lined with the tested material. The 2.4~m wide front wall has a 0.8~m wide, 2.0~m high door opening in the middle, and the back corner adjacent to the wall opposite to the door has a gas burner with an output of 100~kW for the first ten minutes of the test. If flashover does not occur during this time, the burner heat release is increased to 300~kW for another ten minutes. The test is terminated after 20 minutes or when flashover occurs.
+In a room corner test, the walls and ceiling of a 2.4~m by 3.6~m by 2.4~m tall compartment are lined with the sample material. The 2.4~m wide front wall has a 0.8~m wide, 2.0~m high door opening in the middle, and the back corner adjacent to the wall opposite to the door has a gas burner with an output of 100~kW for 10~min. If flashover does not occur during this time, the burner heat release is increased to 300~kW for another 10~min. The test is terminated after 20~min or when flashover occurs.
 
-In the test M12~\cite{Sundstrom:1998} the walls and the ceiling are lined with 10~mm thick spruce timber, whereas in the modified test~\cite{Hietaniemi:2001} the walls and ceiling only in the proximity of the gas burner was lined with 22~mm thick spruce timber, elsewhere being exposed concrete. In both of the studied tests the flashover occurred within the first ten minutes, so the burner heat release was 100~kW over the entire duration of the test.
+In the test M12~\cite{Sundstrom:1998}, the walls and the ceiling are lined with 10~mm thick spruce timber, whereas in the modified test~\cite{Hietaniemi:2001} the walls and ceiling only in the proximity of the gas burner were lined with 22~mm thick spruce timber, elsewhere being exposed concrete. In both tests, flashover occurred within the first 10~min.
 
 \subsubsection{Modeling Notes}
 
-In the simulations of flaming cone calorimeter experiments, the computational domain is 20~cm in length and width and 30~cm in height, with a grid resolution of 1~cm. For the inert and smoldering experiments the domain is 30~cm by 30~cm by 30~cm with the resolution of 10~cm, as the gaseous phase was not directly modeled. In the simulations of room corner tests, the computational domain continued for 1.5~m outside after the 20~cm thick front wall. In the corner where the burner was located, the grid resolution was 2~cm over a volume that extends for 0.5~m from the corner at x-, and y directions, and spans the entire height from floor to the ceiling. Elsewhere, a resolution of 10~cm was used.
+In the simulations of flaming cone calorimeter experiments, the computational domain is 20~cm in length and width and 30~cm in height, with a grid resolution of 1~cm. For the inert and smoldering experiments, the domain is 30~cm by 30~cm by 30~cm with a resolution of 10~cm because the gaseous phase is not directly modeled. In the simulations of room corner tests, the computational domain is extended 1.5~m outside the 20~cm thick front wall. In the corner where the burner is located, the grid resolution is 2~cm over a volume that extends 0.5~m from the corner and spans the entire height from floor to ceiling. Elsewhere, a resolution of 10~cm is used.
 
-Neither~\cite{Sundstrom:1998} nor~\cite{Hietaniemi:2001} reported the initial moisture content of the timbers, so a moisture mass fraction of 0.09 similar to the cone calorimeter specimens in~\cite{Rinta-Paavola:2023}, was assumed in the beginning of room corner tests. This is a relevant moisture content for timber in normal room air.
+Neither Ref.~\cite{Sundstrom:1998} nor Ref.~\cite{Hietaniemi:2001} reports the initial moisture content of the timbers; thus, a moisture mass fraction of 0.09 is assumed, similar to the cone calorimeter specimens in Ref.~\cite{Rinta-Paavola:2023}.
 
-The parameters in the original research of Rinta-Paavola et al.~\cite{Rinta-Paavola:2023} were estimated for FDS 6.7.7, but in FDS 6.7.8 and later the reaction rate equation for solid pyrolysis is different, possibly requiring scaling of the pre-exponential factor when parameters are carried from a FDS version with the old reaction rate definition to a newer one. See~\cite{Rinta-Paavola:2023} for greater detail. Table~\ref{Aalto_Woods_Properties} presents appropriately scaled parameters that yield results consistent to the original simulations in~\cite{Rinta-Paavola:2023} when initial moisture mass fraction is 0.09. If a different initial moisture content is used, re-scaling of the frequency factor would be necessary to gain most accurate possible agreement with the model presented in~\cite{Rinta-Paavola:2023}.
+The parameters in the original research of Rinta-Paavola~et~al.~\cite{Rinta-Paavola:2023} were estimated for FDS 6.7.7, but in FDS 6.7.8 and later the reaction rate equation for solid pyrolysis is different, possibly requiring scaling of the pre-exponential factor when parameters are carried from a FDS version with the old reaction rate definition to a newer one. See Ref.~\cite{Rinta-Paavola:2023} for details. Table~\ref{Aalto_Woods_Properties} presents appropriately scaled parameters that yield results consistent with the original simulations in Ref.~\cite{Rinta-Paavola:2023} when the initial moisture mass fraction is 0.09. If a different initial moisture content is used, re-scaling of the frequency factor would be necessary to obtain the most accurate possible agreement with the model presented in Ref.~\cite{Rinta-Paavola:2023}.
 
 
 \section{ArupFire Tunnel Fire Experiments}
 \label{ArupFire_Tunnel_Fire_Description}
 
-Gabriele Vigne and Jimmy J\"{o}nsson of ArupFire conducted a series of fire experiments within a tunnel with a 50~m$^2$ cross section. The tunnel is located in La Ribera del Folgoso, Spain. It is approximately 6.5~m high, 8~m wide and 300~m long. Five replicate tests were conducted using a 1~m by 2~m steel pan filled with heptane on water. Near-ceiling temperatures were measured 2~m, 4~m, 6~m and 8~m from the plume centerline. The peak heat release rate was approximately 5.3~MW.
+Gabriele Vigne and Jimmy J\"{o}nsson~\cite{Vigne:2009} conducted a series of fire experiments within a tunnel with a 50~m$^2$ cross section. The tunnel is located in La Ribera del Folgoso, Spain. It is approximately 6.5~m high, 8~m wide and 300~m long. Five replicate tests were conducted using a 1~m by 2~m steel pan filled with heptane on water. Near-ceiling temperatures were measured 2~m, 4~m, 6~m and 8~m from the plume centerline. The peak heat release rate was approximately 5.3~MW.
 
 
 \section{ATF Corridors Experiments}
@@ -52,7 +52,7 @@ The fire source was a natural gas diffusion burner.  The burner surface was hori
 \section{Atmospheric Dispersion Correlations}
 \label{Atmospheric_Dispersion_Description}
 
-A common exercise in atmospheric dispersion modeling is predicting the plume rise height of stack emissions. Stull~\cite{Stull:2000} presents an empirical correlation for plume rise height from a smoke stack in a stable atmospheric boundary layer. Details of the correlation and simulation are found in Sec.~\ref{Plume_Height_Discussion}.
+A common exercise in atmospheric dispersion modeling is predicting the plume rise height of stack emissions. Stull~\cite{Stull:2000} presents an empirical correlation for plume rise height from a smoke stack in a stable atmospheric boundary layer. Details of the correlation and simulation are found in Sec.~\ref{Plume Height}.
 
 
 
@@ -620,7 +620,7 @@ As part of their efforts to characterize the burning behavior of commonly used p
 
 Reduced-scale tunnel experiments~\cite{FHWA:test_report} were conducted at the Institute f{\"u}r Angewandte Brandschutzforschung (IFAB), Germany, as part of a research program sponsored by the U.S. Federal Highway Administration (FHWA). The objective of the research was to assess operational integration of highway tunnel emergency ventilation systems with fixed fire fighting systems. The experiments assessed the ability of a sprinkler system to improve smoke management in a longitudinally vented tunnel. Measurements of velocity, temperature, pressure, humidity, and surface temperature were recorded, and video footage was taken. Three different nozzles were used in the tests and measurements of the nozzle spray patterns were reported.
 
-The tunnel was approximately 1/4 scale, with a width of 2.5~m, height of 1.25~m and a length of 12~m. The tunnel was lined with water-resistant and non-combustible cement board. Figure~\ref{FHWAtunnel1} provides a schematic diagram. 
+The tunnel was approximately 1/4 scale, with a width of 2.5~m, height of 1.25~m and a length of 12~m. The tunnel was lined with water-resistant and non-combustible cement board. Figure~\ref{FHWAtunnel1} provides a schematic diagram.
 
 Three fans were used to inject air into the tunnel and generate a longitudinal flow. To correlate fan operation to bulk longitudinal velocity, the inlet velocity profile was measured manually, in a cold flow test, at 25 points distributed over the inlet cross section, 1.5~m into the tunnel, using a handheld rotating vane anemometer. The bulk longitudinal velocity was approximately constant during the experiments, but the transient (fluctuating) profile was used in the simulations in order to better match the actual boundary conditions.
 
@@ -630,11 +630,11 @@ Two types of nozzles were used with varying drop sizes and flow rates. The dropl
 
 \subsubsection{Modeling Notes}
 
-A summary of the experiments is provided in Table~\ref{tab:FHWA_Test_Matrix}. The FDS simulations used a cubic grid resolution of 5~cm throughout. Different spray nozzles were tested to measure the interaction between the water spray and the ventilation. Typically, the nozzles were activated after some back-layering had been visually observed. 
+A summary of the experiments is provided in Table~\ref{tab:FHWA_Test_Matrix}. The FDS simulations used a cubic grid resolution of 5~cm throughout. Different spray nozzles were tested to measure the interaction between the water spray and the ventilation. Typically, the nozzles were activated after some back-layering had been visually observed.
 
 
 \begin{figure}[!ht]
-\includegraphics[width=\textwidth]{FIGURES/FHWA_Tunnel/Nozzle_A.jpg} 
+\includegraphics[width=\textwidth]{FIGURES/FHWA_Tunnel/Nozzle_A.jpg}
 \includegraphics[width=\textwidth]{FIGURES/FHWA_Tunnel/Nozzle_B.jpg}
 \caption[Sketches of the FHWA/IFAB experiments]{Sketches of the two sprinkler configurations in the FHWA/IFAB experiments. The fans and flow straightener are to the left. The cross-hatched squares are access panels. The burner is below Nozzle~A.}
 \label{FHWAtunnel1}
@@ -1088,7 +1088,7 @@ R4  & 5.00e+08 & 1.40E+05 & 1  & 0.8  & $-2.67$  &       &       & 0.01 & 3.66 &
 
 Lattimer et al. studied the thermal environment created by a fire impinging on a ceiling at the end of a corridor in~\cite{Lattimer:FTJ:2013}. The apparatus, shown in Figure~\ref{fig:lattimer}, consisted of a 2.4~m long 1.2~m wide corridor with a ceiling height of 2.1~m from the floor. The back wall and back 1.2~m of the side walls extended 1.2~m below the ceiling. The remaining 1.2~m of the side walls were extended 0.6~m below the ceiling. The overall apparatus was elevated 0.9~m off of the floor to allow air to flow into the bottom of the corridor from all sides. A 0.46~m deep by 1.15~m wide propane sand burner was centered on the back wall with the top surface located either 0.6~m or 1.1~m from the ceiling. Each separation distance was tested at four heat release rates ranging from 100-400~kW.
 
-The authors measured the water cooled gauge heat flux and gas temperature at four locations along the ceiling. The distances from the back wall were 0.3~m, 0.9~m, 1.5~m, and 2.1~m. Table~\ref{tab:lattimer_ceiling_exp} summarizes the test conditions and measurements from this test series. 
+The authors measured the water cooled gauge heat flux and gas temperature at four locations along the ceiling. The distances from the back wall were 0.3~m, 0.9~m, 1.5~m, and 2.1~m. Table~\ref{tab:lattimer_ceiling_exp} summarizes the test conditions and measurements from this test series.
 
 \begin{table*}[!ht]
 \centering
@@ -1164,7 +1164,7 @@ Lechene et al.~\cite{Lechene} measured the attenuation of thermal radiation pass
 \section{LEMTA Spray Cooling}
 \label{LEMTA_Spray_Cooling_Description}
 
-A series of experiments was conducted at the Laboratoire \'Energies and M\'ecanique Th\'eorique et Appliqu\'ee (LEMTA) to measure the temperature of a hot steel plate cooled by a water spray~\cite{Acem:ISFEH2022}. The 1~m by 1~m by 2~mm thick steel plate, in either a horizontal or vertical configuration, was heated by a radiant panel either 20~cm below or to the side. The 50~cm by 50~cm heater delivered a total power of approximately 50~kW with a radiative component estimated to be 25~kW, producing a radiative heat flux near 100~kW/m$^2$.  After the plate reached a steady temperature, the radiant panel was switched off and a water spray nozzle 50~cm above or to the side of the plate was activated. Three different nozzle designs were tested: (1) a single Protectospray D3 (PSD3) conical nozzle from Tyco flowing at 34.5~L/min, (2) a single SU42 conical jet nozzle from Spraying Systems flowing at 4.6~L/min, and (3) four TPU400067 flat jet nozzles from Spraying Systems flowing for a total of 1.6~L/min. 
+A series of experiments was conducted at the Laboratoire \'Energies and M\'ecanique Th\'eorique et Appliqu\'ee (LEMTA) to measure the temperature of a hot steel plate cooled by a water spray~\cite{Acem:ISFEH2022}. The 1~m by 1~m by 2~mm thick steel plate, in either a horizontal or vertical configuration, was heated by a radiant panel either 20~cm below or to the side. The 50~cm by 50~cm heater delivered a total power of approximately 50~kW with a radiative component estimated to be 25~kW, producing a radiative heat flux near 100~kW/m$^2$.  After the plate reached a steady temperature, the radiant panel was switched off and a water spray nozzle 50~cm above or to the side of the plate was activated. Three different nozzle designs were tested: (1) a single Protectospray D3 (PSD3) conical nozzle from Tyco flowing at 34.5~L/min, (2) a single SU42 conical jet nozzle from Spraying Systems flowing at 4.6~L/min, and (3) four TPU400067 flat jet nozzles from Spraying Systems flowing for a total of 1.6~L/min.
 
 Each experiment was performed in a horizontal and vertical orientation. The steel plate temperature was measured at the center on top and bottom in order to assess the heat transfer across the plate.
 
@@ -2148,24 +2148,24 @@ Researchers at NIST have conducted measurements on various polymers as part of t
 \section{NIST Pool Fire Experiments}
 \label{NIST_Pool_Fires_Description}
 
-The NIST Pool Fire Experiments include temperature, species concentration, velocity, and heat flux measurements of 30~cm and 100~cm diameter circular liquid fuel fires, and 37~cm gaseous burner fires.
+The NIST Pool Fire Experiments include temperature, species concentration, velocity, and heat flux measurements of 30~cm and 100~cm diameter circular liquid fuel fires, and 37~cm gaseous burner fires. The 30~cm and 37~cm fires are documented in Ref.~\cite{Sung:TN2162r1}. The 100~cm methanol fire is documented in Ref.~\cite{Sung:TN2083}.
 
 The 30~cm burner is 15~cm deep and has a wall thickness of 1.6~mm. The burner is fitted with legs such that the burner rim is positioned 30~cm above the floor. The bottom of the burner is maintained at a constant temperature by flowing tap water (nominally 20~$^\circ$C) through a 3~cm section on the bottom of the fuel pan. The dimensions of the circular burner are similar to Weckman's methanol experiment described in Sec.~\ref{Waterloo_Methanol_Description}.
 
+The 37~cm burner is actually 38~cm in diameter with an effective diameter of 37~cm. It is water cooled, and the surface temperature is maintained at approximately 40~$^\circ$C.  The measured fuel flow rate for the methane fire was 0.69~g/s and its estimated HRR was 34.5~kW. The heat release rates of the three propane fires were 20~kW, 34~kW, and 50~kW.
+
 The 100~cm burner is also 15~cm deep, has a wall thickness of 1.6~mm, and is water-cooled.
 
-The 37~cm burner is actually 38~cm in diameter with an effective diameter of 37~cm. It is water cooled, and the surface temperature is maintained at approximately 40~$^\circ$C.  The measured fuel flow rate for the methane fire was 0.69~g/s and its estimated HRR was 34.5~kW. The heat release rates of the two propane fires were 20~kW and 34~kW.
-
-Details and references with regard to the plume temperature measurements are given in Sec.~\ref{NIST_Pool_Fires_Plume_Temps}. Details on the heat flux measurements are given in Sec.~\ref{NIST_Pool_Fires_Heat_Flux_Results}. Details on the gas species measurements is given in Sec.~\ref{sec:NIST_Pool_Fires}. Details on the velocity measurements is given in Sec.~\ref{NIST_Pool_Fires_Velocity}.
+Details and references with regard to the plume temperature measurements are given in Sec.~\ref{NIST_Pool_Fires_Plume_Temps}. Details on the heat flux measurements are given in Sec.~\ref{NIST_Pool_Fires_Heat_Flux_Results}. Details on the gas species measurements are given in Sec.~\ref{sec:NIST_Pool_Fires}. Details on the velocity measurements are given in Sec.~\ref{NIST_Pool_Fires_Velocity}.
 
 
 \subsubsection{Modeling Notes}
 
-The 30~cm pool fires are modeled at three different grid resolutions---2~cm, 1~cm, and 0.5~cm. The 100~cm pool fires are modeled at 4~cm, 2~cm, and 1~cm resolution. The mass loss rate of the fuel is specified.
+The 30~cm and 37~cm fires are modeled at three different grid resolutions---2~cm, 1~cm, and 0.5~cm. The 100~cm methanol pool fire is modeled at 4~cm, 2~cm, and 1~cm resolution. The mass loss rate of the fuel is specified for the 30~cm and 37~cm fires, and both predicted and specified for the 100~cm fire.
 
 A two-step reaction mechanism is implemented. In the first reaction, fuel is converted to CO, soot, H$_2$, and H$_2$O. In the second reaction, the CO, soot, and H$_2$ are converted to CO$_2$ and H$_2$O. Both reactions employ fast kinetics, but proceed in series, not in parallel. The relative amounts of CO, soot, and H$_2$ produced in the first step are still subjects of study, and for the moment have been estimated based on measured results. The fractions of carbon atoms converted to CO in the first step are as follows---0.85 for acetone; 0.95 for ethanol; 0.97 for methane; 1.0 for methanol; 0.85 for propane. For all fuels, one half of the hydrogen atoms are converted to H$_2$ in the first step.
 
-The radiative fractions are specified based on measured values---0.31 for acetone; 0.26 for ethanol; 0.15 for methane; 0.21 for 1~m methanol; 0.22 for 30~cm methanol; 0.22 for propane.
+The radiative fractions are specified based on reported values from Ref.~\cite{Sung:TN2162r1}---0.31 for acetone; 0.26 for ethanol; 0.35 for heptane; 0.21 for methane; 0.21 for 1~m methanol; 0.23 for 30~cm methanol; 0.23, 0.30, and 0.33 for the 20~kW, 34~kW, and 50~kW propane fires, respectively.
 
 
 \section{NIST Smoke Alarm Experiments}
@@ -2700,7 +2700,7 @@ Materials which $Y_{s}$ was measured to be zero or less than zero were set to a 
 Materials for which data was not available in the original studies used a $Y_{s}$ of 0.05 g/g.
 
 Note that the RISE and FPL databases did not provide ignition properties or information on specific material conditioning or modifications to test procedures.
-For these materials, 
+For these materials,
 a thermal conductivity of 0.4 $\mathrm{W/(m\cdot K)}$,
 specific heat capacity of 1.0 $\mathrm{kJ/(kg\cdot K)}$,
 and an emissivity of unity was assumed.
@@ -3018,13 +3018,13 @@ Yoshioka and co-workers~\cite{Yoshioka:FST2012} at the Tokyo University of Scien
 
 The compartment dimension were 4.0~m by 4.0~m by 1.7~m. Note that the dimensions are incorrect in Ref.~\cite{Yoshioka:FST2012}. The facade was 5.7~m tall, with a 1.2~m wide side wall made of the same material as the main facade. The fire compartment had one 1.2~m tall and 2.0~m wide window in the facade wall, but the window was partially closed in two of the experiments. The rear of the fire compartment had four 0.5~m by 0.6~m openings that were open or closed according to the desired ventilation condition. These openings were closed by heavy fire blankets, and there was considerable uncertainty in the actual opening area.
 
-A mixture of gaseous fuels supplied by the local utility was used as a fuel. It was supplied to the compartment through four, room-wide burner pipes with holes on the top surface, approximately 20~cm above the floor. The experiments were conducted in three series, named I, 1 and 2. For each, multiple fires were generated between which changes were made to the ventilation and HRR. The test duration was 5~min with 10~min of cooling between each. 
+A mixture of gaseous fuels supplied by the local utility was used as a fuel. It was supplied to the compartment through four, room-wide burner pipes with holes on the top surface, approximately 20~cm above the floor. The experiments were conducted in three series, named I, 1 and 2. For each, multiple fires were generated between which changes were made to the ventilation and HRR. The test duration was 5~min with 10~min of cooling between each.
 
 A second set of experiments was performed in this facility by Sun et~al.~\cite{Sun:FAM2024} using a configuration based on the JIS~A~1310 test standard. The fire compartment for this test is 1.35~m by 1.35~m by 1.35~m with a 0.91~m by 0.91~m opening. The 0.6~m by 0.6~m propane burner is flush with the floor at the rear of the compartment with heat release rates of 600~kW, 750~kW, and 900~kW.
 
 \subsubsection{Modeling Notes}
 
-Gleb Bytskov at the University of Aalto, Finland, performed numerical simulations of these experiments using FDS as part of his master's thesis~\cite{Bytskov:Thesis}. The grid resolution is 10~cm. The fuel is assumed to be propane with a soot yield of 0.015, CO yield of 0.015, and radiative fraction of 0.20. 
+Gleb Bytskov at the University of Aalto, Finland, performed numerical simulations of these experiments using FDS as part of his master's thesis~\cite{Bytskov:Thesis}. The grid resolution is 10~cm. The fuel is assumed to be propane with a soot yield of 0.015, CO yield of 0.015, and radiative fraction of 0.20.
 
 The JIS~A~1310 simulations use propane with a radiative fraction of 0.30.
 
@@ -3618,19 +3618,19 @@ Wind tunnel measurements were conducted at the University of Western Ontario (UW
 
 \subsubsection{Modeling Notes}
 
-The 1:100 scale model of the building is approximately 14~cm long, 9~cm wide, and 4~cm tall. The simulations use 5.0~mm, 2.5~mm, and 1.25~mm cubic grid cells, uniformly spanning the computational domain of dimensions 1.12~m $\times$ 0.56~m $\times$ 0.28~m. The 4~cm height of the scale model is spanned by 8, 16, and 32 grid cells. The grid resolution was assessed by checking that the values of $y^+$, a non-dimensional distance, never exceed 150 for any mesh resolution. $y^+$ values are dependent on turbulence model wall laws and a value of 150 means that the first grid point is well within the logarithmic region.
+The 1:100 scale model of the Test~7 building is approximately 14~cm long, 9~cm wide, and 4~cm tall. The simulations use 5.0~mm, 2.5~mm, and 1.25~mm cubic grid cells, uniformly spanning the computational domain of dimensions 1.12~m $\times$ 0.56~m $\times$ 0.28~m. The 4~cm height of the scale model is spanned by 8, 16, and 32 grid cells. The grid resolution was assessed by checking that the values of $y^+$, a non-dimensional distance, never exceed 150 for any mesh resolution. $y^+$ values are dependent on turbulence model wall laws and a value of 150 means that the first grid point is well within the logarithmic region.
 
 Only two wind directions are chosen for validation, 180\si{\degree} and 270\si{\degree}, representing right angles formed with the long and short sides of the building. For each angle, 3 lines of pressure measurements running up the windward side, along the roof, and down the leeward side are used for comparison to the simulation. One line of pressure measurements along the side of the scale model is also used.
 
-The incoming flow assigned at the inflow boundary is characterized by its mean wind speed profile and turbulent fluctuations. For consistency with the UWO experiments, the mean wind speed profile was modeled by the power law:
+The incoming flow is defined using an \ct{OPEN} wind boundary condition, and is characterized by its mean wind speed profile and turbulent fluctuations. For consistency with the UWO experiments, the mean wind speed profile was modeled by the power law:
 \begin{equation}
 U(z) = 9.144 \left(\frac{z}{0.0396}\right)^p
 \end{equation}
-where 9.144 m/s is the reference wind speed at the 0.0396~m roof height of the scale model and the power law exponent $p=0.1173$ was fit to the experimental data.
+where 9.144 m/s is the reference wind speed at the 0.0396~m roof height of the scale model and the power law exponent $p=0.1173$ was fit to the experimental data. The vertical wind profile $U(z)$ is applied using a \ct{RAMP} function.
 
-Fluctuations at the inlet boundary are generated by the Synthetic Eddy Method (SEM) of Jarrin~\cite{Jarrin:2008}. The desired value of \ct{N_EDDY} (the number of eddies generated at the inlet) is the largest possible value that does not slow down the simulation. This value is determined by running a number of simulations for the same time while varying the \ct{N_EDDY} input and recording the total run time. The other turbulence parameters, \ct{L_EDDY} (characteristic eddy length) and \ct{REYNOLDS_STRESS}, are set based on the turbulence intensity data from the UWO experiments. The Reynolds stresses are found by multiplying the turbulence intensity in each direction by the wind velocity at roof height to determine the root mean square of the velocity fluctuations, and then squaring the root mean square values.
+Fluctuations at the inflow boundary are generated by the Synthetic Eddy Method (SEM) of Jarrin~\cite{Jarrin:2008}. The desired value of \ct{N_EDDY} (the number of eddies generated at the inlet) is the largest possible value that does not slow down the simulation. This value is determined by running a number of simulations for the same time while varying the \ct{N_EDDY} input and recording the total run time. The other turbulence parameters, \ct{L_EDDY} (characteristic eddy length) and \ct{REYNOLDS_STRESS}, are set based on the turbulence intensity data from the UWO experiments. The Reynolds stresses are found by multiplying the turbulence intensity in each direction by the wind velocity at roof height to determine the root mean square of the velocity fluctuations, and then squaring the root mean square values.
 
-The side walls and roof of the wind tunnel are set to free-slip. The roughness length at the ground is specified to be 0.0001~m, 1/100 the full-scale value of 0.01~m. The outlet of the wind tunnel is set to an ``open'' boundary condition, where pressure is set to the ambient pressure.
+The side walls and roof of the wind tunnel are set to free-slip. The roughness length at the ground is specified to be 0.0001~m, 1/100 the full-scale value of 0.01~m. The outlet of the wind tunnel is also set to an \ct{OPEN} boundary condition, where pressure is set to the ambient pressure.
 
 
 \section{Vettori Flat Ceiling Experiments}

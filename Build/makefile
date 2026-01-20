@@ -11,9 +11,8 @@
 
 VPATH = ../Source
 
-# 3rd part library versions
-HYPRE_VERSION=v2.33.0
-SUNDIALS_VERSION=v6.7.0
+HYPRE_VERSION=v3.0.0
+SUNDIALS_VERSION=v7.5.0
 
 ifeq ($(shell echo "check_quotes"),"check_quotes")
 # windows
@@ -113,8 +112,8 @@ endif # MKLROOT test
 ifdef SUNDIALS_HOME # This assumes the SUNDIALS library is available.
    FFLAGS_SUNDIALS = -DWITH_SUNDIALS ${SUNDIALS_INFO} -I"${SUNDIALS_HOME}/fortran"
    FFLAGS_SUNDIALS_WIN = -DWITH_SUNDIALS ${SUNDIALS_INFO} /I"${SUNDIALS_HOME}\fortran"
-   LFLAGS_SUNDIALS = ${SUNDIALS_HOME}/lib/libsundials_fcvode_mod.a ${SUNDIALS_HOME}/lib/libsundials_fnvecserial_mod.a ${SUNDIALS_HOME}/lib/libsundials_cvode.a
-   LFLAGS_SUNDIALS_WIN = ${SUNDIALS_HOME}\lib\sundials_fcvode_mod.lib ${SUNDIALS_HOME}\lib\sundials_fnvecserial_mod.lib ${SUNDIALS_HOME}\lib\sundials_cvode.lib  /link /NODEFAULTLIB:MSVCRTD /NODEFAULTLIB:libcmtd.lib
+   LFLAGS_SUNDIALS = ${SUNDIALS_HOME}/lib/libsundials_fcvode_mod.a ${SUNDIALS_HOME}/lib/libsundials_fnvecserial_mod.a ${SUNDIALS_HOME}/lib/libsundials_cvode.a ${SUNDIALS_HOME}/lib/libsundials_fcore_mod.a ${SUNDIALS_HOME}/lib/libsundials_core.a
+   LFLAGS_SUNDIALS_WIN = ${SUNDIALS_HOME}\lib\sundials_fcvode_mod_static.lib ${SUNDIALS_HOME}\lib\sundials_fnvecserial_mod_static.lib ${SUNDIALS_HOME}\lib\sundials_cvode_static.lib ${SUNDIALS_HOME}\lib\sundials_fcore_mod.lib ${SUNDIALS_HOME}\lib\sundials_core_static.lib /link  /NODEFAULTLIB:MSVCRTD /NODEFAULTLIB:libcmtd.lib
 endif
 
 ifdef HYPRE_HOME # This assumes the HYPRE library is available.
@@ -253,14 +252,14 @@ impi_intel_linux_openmp : obj = fds_impi_intel_linux_openmp
 impi_intel_linux_openmp : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
-impi_intel_linux_db : FFLAGS = -check all -warn all -diag-error=remark,warn,error -O0 -g -traceback -fpe0 -nofltconsistency -stand:f23 -no-wrap-margin $(GITINFO) $(FFLAGSMKL) $(FFLAGS_HYPRE) $(FFLAGS_SUNDIALS) -DUSE_IFPORT
+impi_intel_linux_db : FFLAGS = -check all -warn all -diag-error=remark,warn,error -O0 -g -traceback -fpe0 -nofltconsistency -stand f2023 -no-wrap-margin $(GITINFO) $(FFLAGSMKL) $(FFLAGS_HYPRE) $(FFLAGS_SUNDIALS) -DUSE_IFPORT
 impi_intel_linux_db : LFLAGSMKL = $(LFLAGSMKL_INTEL) $(LFLAGS_HYPRE) $(LFLAGS_SUNDIALS)
 impi_intel_linux_db : FCOMPL = $(COMP_FC)
 impi_intel_linux_db : obj = fds_impi_intel_linux_db
 impi_intel_linux_db : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
-impi_intel_linux_openmp_db : FFLAGS = -check all -warn all -diag-error=remark,warn,error -O0 -g -traceback -fpe0 -nofltconsistency -stand:f23 -no-wrap-margin $(GITINFO) $(FFLAGSMKL) $(FFLAGS_HYPRE) $(FFLAGS_SUNDIALS) -DUSE_IFPORT
+impi_intel_linux_openmp_db : FFLAGS = -check all -warn all -diag-error=remark,warn,error -O0 -g -traceback -fpe0 -nofltconsistency -stand f2023 -no-wrap-margin $(GITINFO) $(FFLAGSMKL) $(FFLAGS_HYPRE) $(FFLAGS_SUNDIALS) -DUSE_IFPORT
 impi_intel_linux_openmp_db : LFLAGSMKL = $(LFLAGSMKL_INTEL_OPENMP) $(LFLAGS_HYPRE) $(LFLAGS_SUNDIALS)
 impi_intel_linux_openmp_db : FCOMPL = $(COMP_FC)
 impi_intel_linux_openmp_db : FOPENMPFLAGS = -qopenmp

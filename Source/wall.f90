@@ -50,6 +50,21 @@ TNOW=CURRENT_TIME()
 
 CALL POINT_TO_MESH(NM)
 
+! A note concerning the pointers below.
+! At the PREDICTOR stage of the time step, RHOS and ZZS are the estimated density and species fields, and PBAR_S is the
+! estimated background pressure. At the CORRECTOR stage, RHO, ZZ, and PBAR are the corrected (final) values.
+! This routine, WALL_BC, assigns boundary values for these fields.
+! However, at this point in the PREDICTOR stage, (US,VS,WS) has NOT been calculated, nor has (U,V,W) in the CORRECTOR. 
+! So why point to them?
+! The reason is that it is not unusual for the components of velocity to change sign from the PREDICTOR to the CORRECTOR stage.
+! If that happens, the INFLOW/OUTFLOW condition at an OPEN boundary becomes inconsistent. That is, what is thought to be an 
+! OUFLOW boundary during the PREDICTOR stage, say, might actually be treated as INFLOW during the next advection calculation in the 
+! CORRECTOR stage because the velocity field to be used in the advection calculation is not yet known. 
+! The pointers used here assume that a velocity component, say US, is less likely to change sign from
+! one time step to the next, especially when U and US have different signs. Thus, the US computed at the end of the PREDICTOR 
+! stage of the previous time step is more likely to have the same sign as the US that is to be computed at the end of the 
+! PREDICTOR stage of the current time step and used in the advection of the energy/species in the CORRECTOR stage.
+
 IF (PREDICTOR) THEN
    UU => US
    VV => VS
@@ -392,9 +407,11 @@ TYPE(BOUNDARY_COORD_TYPE), POINTER :: BC
 TYPE(SURFACE_TYPE), POINTER :: SF
 TYPE(LAGRANGIAN_PARTICLE_TYPE), POINTER, OPTIONAL :: LP
 TYPE(THIN_WALL_TYPE), POINTER, OPTIONAL :: TW
-REAL(EB) :: TSI,RAMP_FACTOR,UBAR,VBAR,WBAR
+REAL(EB) :: TSI,RAMP_FACTOR,UBAR,VBAR,WBAR,TLW(0:1,0:1,0:1)
+INTEGER :: N,TLW_IND(1:3)
 
 IF (PRESENT(WALL_INDEX)) THEN
+
    IF (ABS(SF%T_IGN-T_BEGIN)<=SPACING(SF%T_IGN) .AND. SF%RAMP(TIME_VELO)%INDEX>=1) THEN
       TSI = T
    ELSE
@@ -415,16 +432,6 @@ IF (PRESENT(WALL_INDEX)) THEN
          VBAR = 0.5_EB*(VV(BC%IIG,BC%JJG,BC%KKG)+VV(BC%IIG,BC%JJG-1,BC%KKG)) - SF%VEL_T(2)*RAMP_FACTOR
          B1%U_TANG = SQRT(UBAR**2+VBAR**2)
    END SELECT
-ELSEIF (PRESENT(PARTICLE_INDEX)) THEN
-   UBAR = 0.5_EB*(UU(BC%IIG,BC%JJG,BC%KKG)+UU(BC%IIG-1,BC%JJG,BC%KKG)) - LP%U
-   VBAR = 0.5_EB*(VV(BC%IIG,BC%JJG,BC%KKG)+VV(BC%IIG,BC%JJG-1,BC%KKG)) - LP%V
-   WBAR = 0.5_EB*(WW(BC%IIG,BC%JJG,BC%KKG)+WW(BC%IIG,BC%JJG,BC%KKG-1)) - LP%W
-   B1%U_TANG = SQRT(UBAR**2+VBAR**2+WBAR**2)
-ENDIF
-
-! Set near-wall gas temperature, B1%TMP_G, and incoming radiation, B1%Q_RAD_IN
-
-IF (PRESENT(WALL_INDEX) .OR. PRESENT(PARTICLE_INDEX)) THEN
 
    IF (SF%TMP_GAS_FRONT > 0._EB) THEN
       B1%TMP_G = TMPA + EVALUATE_RAMP(T-T_BEGIN,SF%RAMP(TIME_TGF)%INDEX)*(SF%TMP_GAS_FRONT-TMPA)
@@ -434,6 +441,32 @@ IF (PRESENT(WALL_INDEX) .OR. PRESENT(PARTICLE_INDEX)) THEN
    ENDIF
    B1%RHO_G = RHOP(BC%IIG,BC%JJG,BC%KKG)
    B1%ZZ_G(1:N_TRACKED_SPECIES) = ZZP(BC%IIG,BC%JJG,BC%KKG,1:N_TRACKED_SPECIES)
+
+ELSEIF (PRESENT(PARTICLE_INDEX)) THEN
+   
+   IF (SF%TMP_GAS_FRONT > 0._EB) THEN
+      B1%TMP_G = TMPA + EVALUATE_RAMP(T-T_BEGIN,SF%RAMP(TIME_TGF)%INDEX)*(SF%TMP_GAS_FRONT-TMPA)
+      B1%Q_RAD_IN = B1%EMISSIVITY*SIGMA*B1%TMP_G**4
+   ENDIF
+   
+   ! For thermally thick particles, interpolate near-surface quantities. B1%U_TANG interpolation is in part.f90
+   IF (SF%THERMAL_BC_INDEX==THERMALLY_THICK) THEN 
+      ! Get reusable interpolation coefficients
+      CALL GET_TRILINEAR_WEIGHTS(BC%IIG,BC%JJG,BC%KKG,BC%X,BC%Y,BC%Z,TLW_IND,TLW)
+      IF (SF%TMP_GAS_FRONT < 0._EB) B1%TMP_G = SCALAR_TO_POINT(TLW_IND,TLW,TMP)
+      B1%RHO_G = SCALAR_TO_POINT(TLW_IND,TLW,RHOP)      
+      DO N=1,N_TRACKED_SPECIES
+         B1%ZZ_G(N) = SCALAR_TO_POINT(TLW_IND,TLW,ZZP(:,:,:,N))
+      ENDDO
+   ELSE 
+      IF (SF%TMP_GAS_FRONT < 0._EB) B1%TMP_G =  TMP(BC%IIG,BC%JJG,BC%KKG)
+      B1%RHO_G = RHOP(BC%IIG,BC%JJG,BC%KKG)
+      B1%ZZ_G(1:N_TRACKED_SPECIES) = ZZP(BC%IIG,BC%JJG,BC%KKG,1:N_TRACKED_SPECIES)
+      UBAR = 0.5_EB*(UU(BC%IIG,BC%JJG,BC%KKG)+UU(BC%IIG-1,BC%JJG,BC%KKG)) - LP%U
+      VBAR = 0.5_EB*(VV(BC%IIG,BC%JJG,BC%KKG)+VV(BC%IIG,BC%JJG-1,BC%KKG)) - LP%V
+      WBAR = 0.5_EB*(WW(BC%IIG,BC%JJG,BC%KKG)+WW(BC%IIG,BC%JJG,BC%KKG-1)) - LP%W
+      B1%U_TANG = SQRT(UBAR**2+VBAR**2+WBAR**2)
+   ENDIF
 
 ELSEIF (PRESENT(THIN_WALL_INDEX)) THEN
 
@@ -462,6 +495,98 @@ ENDIF
 END SUBROUTINE NEAR_SURFACE_GAS_VARIABLES
 
 
+REAL(EB) FUNCTION SCALAR_TO_POINT(TLW_IND,TLW,FIELD)
+
+INTEGER, INTENT(IN) :: TLW_IND(1:3)
+REAL(EB), INTENT(IN) :: TLW(0:1,0:1,0:1)
+REAL(EB), INTENT(IN), DIMENSION(-1:IBP1+1,-1:JBP1+1,-1:KBP1+1) :: FIELD
+INTEGER :: II,JJ,KK
+
+SCALAR_TO_POINT = 0._EB
+DO KK=0,1
+   DO JJ=0,1
+      DO II=0,1
+         SCALAR_TO_POINT = SCALAR_TO_POINT + &
+            TLW(II,JJ,KK) * FIELD(TLW_IND(IAXIS)+II, TLW_IND(JAXIS)+JJ, TLW_IND(KAXIS)+KK)
+      ENDDO
+   ENDDO
+ENDDO
+
+END FUNCTION SCALAR_TO_POINT
+
+!> \brief Get trilinear interpolation weights for cell-centered quantities
+!> \param IIG particle x cell index
+!> \param JJG particle y cell index
+!> \param KKG particle z cell index
+!> \param P_X particle x coordinate
+!> \param P_Y particle y coordinate
+!> \param P_Z particle z coordinate
+!> \param TLW_IND(AXIS,1:2) Output: upper and lower cell indices for interpolation
+!> \param TLW(0:1,0:1,0:1) Output: trilinear weights for the 8 cells
+SUBROUTINE GET_TRILINEAR_WEIGHTS(IIG,JJG,KKG,P_X,P_Y,P_Z,TLW_IND,TLW)
+
+INTEGER, INTENT(IN) :: IIG,JJG,KKG
+REAL(EB), INTENT(IN) :: P_X,P_Y,P_Z
+INTEGER, INTENT(OUT) :: TLW_IND(1:3)
+REAL(EB), INTENT(OUT) :: TLW(0:1,0:1,0:1)
+REAL(EB) :: P,PP,R,RR,S,SS,TLW_SUM
+LOGICAL :: VALID_MASK(0:1,0:1,0:1)
+INTEGER :: II,JJ,KK
+
+! Determine which cell centers to use based on particle location relative to cell center
+TLW_IND(IAXIS) = IIG; TLW_IND(JAXIS) = JJG; TLW_IND(KAXIS) = KKG
+! Particle is below cell center
+IF (P_X < XC(IIG)) TLW_IND(IAXIS) = IIG - 1
+IF (P_Y < YC(JJG)) TLW_IND(JAXIS) = JJG - 1
+IF (P_Z < ZC(KKG)) TLW_IND(KAXIS) = KKG - 1
+
+! Compute normalized coordinates within the interpolation box
+P = (P_X - XC(TLW_IND(IAXIS))) / MAX(TWO_EPSILON_EB, XC(TLW_IND(IAXIS)+1) - XC(TLW_IND(IAXIS)))
+R = (P_Y - YC(TLW_IND(JAXIS))) / MAX(TWO_EPSILON_EB, YC(TLW_IND(JAXIS)+1) - YC(TLW_IND(JAXIS)))
+S = (P_Z - ZC(TLW_IND(KAXIS))) / MAX(TWO_EPSILON_EB, ZC(TLW_IND(KAXIS)+1) - ZC(TLW_IND(KAXIS)))
+
+P = MIN(1._EB, MAX(0._EB, P))
+R = MIN(1._EB, MAX(0._EB, R))
+S = MIN(1._EB, MAX(0._EB, S))
+
+PP = 1._EB - P
+RR = 1._EB - R
+SS = 1._EB - S
+
+! Compute trilinear weights
+TLW(0,0,0) = PP * RR * SS
+TLW(1,0,0) = P  * RR * SS
+TLW(0,1,0) = PP * R  * SS
+TLW(0,0,1) = PP * RR * S
+TLW(1,1,0) = P  * R  * SS
+TLW(1,0,1) = P  * RR * S
+TLW(0,1,1) = PP * R  * S
+TLW(1,1,1) = P  * R  * S
+
+! Determine if any cells should be excluded (solid)
+VALID_MASK = .TRUE.
+DO KK=0,1
+   DO JJ=0,1
+      DO II=0,1
+         IF (CELL(CELL_INDEX(TLW_IND(IAXIS)+II,TLW_IND(JAXIS)+JJ,TLW_IND(KAXIS)+KK))%SOLID) &
+            VALID_MASK(II,JJ,KK) = .FALSE.
+      ENDDO
+   ENDDO
+ENDDO
+TLW_SUM = SUM(TLW, MASK=VALID_MASK)
+IF (TLW_SUM > TWO_EPSILON_EB) THEN
+   ! Zero out solids
+   WHERE (.NOT. VALID_MASK) TLW = 0._EB
+   ! Renormalize
+   WHERE (VALID_MASK) TLW = TLW / TLW_SUM
+ELSE
+   TLW = 0._EB
+ENDIF
+
+
+END SUBROUTINE GET_TRILINEAR_WEIGHTS
+
+
 !> \brief Calculate the surface temperature TMP_F
 !> \param NM Mesh number
 !> \param T Time (s)
@@ -475,7 +600,7 @@ END SUBROUTINE NEAR_SURFACE_GAS_VARIABLES
 
 SUBROUTINE SURFACE_HEAT_TRANSFER(NM,T,SF,BC,B1,WALL_INDEX,CFACE_INDEX,PARTICLE_INDEX)
 
-USE MATH_FUNCTIONS, ONLY: EVALUATE_RAMP,INTERPOLATE1D_UNIFORM,GET_SCALAR_FACE_VALUE,GET_SCALAR_FACE_VALUE_NEW,GET_SCALAR_FACE_COEF
+USE MATH_FUNCTIONS, ONLY: EVALUATE_RAMP,INTERPOLATE1D_UNIFORM,GET_SCALAR_FACE_VALUE
 USE PHYSICAL_FUNCTIONS, ONLY : GET_SPECIFIC_GAS_CONSTANT,GET_VISCOSITY,GET_MOLECULAR_WEIGHT
 USE DEVICE_VARIABLES, ONLY : PROPERTY,PROPERTY_TYPE
 
@@ -483,8 +608,8 @@ REAL(EB), INTENT(IN) :: T
 INTEGER, INTENT(IN) :: NM
 INTEGER, INTENT(IN), OPTIONAL :: WALL_INDEX,CFACE_INDEX,PARTICLE_INDEX
 REAL(EB) :: ARO,QNET,RAMP_FACTOR,RSUM_F,PBAR_F,TSI,UN, &
-            RHO_ZZ_F(1:N_TOTAL_SCALARS),ZZ_GET(1:N_TRACKED_SPECIES),&
-            RHO_OTHER, PBAR_OTHER,D_Z_N(0:I_MAX_TEMP),D_Z_G,D_Z_OTHER,TMP_OTHER,DDO,DENOM,PBAR_G, &
+            RHO_ZZ_F(1:N_TOTAL_SCALARS),ZZ_GET(1:N_TRACKED_SPECIES), &
+            RHO_OTHER, PBAR_OTHER,D_Z_N(0:I_MAX_TEMP),D_Z_G,D_Z_OTHER,TMP_OTHER,DDO, &
             MU_DNS_G,MU_DNS_OTHER,MU_OTHER,RHO_D,RHO_D_TURB,RHO_D_DZDN,RHO_D_DZDN_OTHER,RSUM_OTHER, &
             BBB,CCC,PPP,QQQ,RRR,UUU,YYY,WWW,HTC_OLD,RSC_LOC,DTMP,RSUM_G,MU_G
 LOGICAL :: ATMOSPHERIC_INTERPOLATION
@@ -515,8 +640,6 @@ ELSEIF (PRESENT(CFACE_INDEX)) THEN
 ELSEIF (PRESENT(PARTICLE_INDEX)) THEN
    LP => LAGRANGIAN_PARTICLE(PARTICLE_INDEX)
    LPC => LAGRANGIAN_PARTICLE_CLASS(LP%CLASS_INDEX)
-   RSUM_G = RSUM(BC%IIG,BC%JJG,BC%KKG)
-   MU_G   = MU(BC%IIG,BC%JJG,BC%KKG)
    IF (LPC%MASSLESS_TARGET) THEN  ! the particle's sole purpose is to record a heat flux
       PY => PROPERTY(LP%PROP_INDEX)
       IF (PY%HEAT_TRANSFER_COEFFICIENT>0._EB) THEN  ! the user has added a PROP line with a specified HTC
@@ -527,6 +650,8 @@ ELSEIF (PRESENT(PARTICLE_INDEX)) THEN
       B1%Q_CON_F = B1%HEAT_TRANS_COEF*(B1%TMP_G-PY%GAUGE_TEMPERATURE)
       RETURN
    ENDIF
+   CALL GET_SPECIFIC_GAS_CONSTANT(B1%ZZ_G(1:N_TRACKED_SPECIES),RSUM_G)
+   CALL GET_VISCOSITY(B1%ZZ_G(1:N_TRACKED_SPECIES),MU_G,B1%TMP_G)
 ENDIF
 
 ! Compute surface temperature, TMP_F, and convective heat flux, Q_CON_F, for various boundary conditions
@@ -570,9 +695,13 @@ METHOD_OF_HEAT_TRANSFER: SELECT CASE(SF%THERMAL_BC_INDEX)
 
       ! Avoid large fluxes at open downwind boundaries
 
-      IF (OPEN_WIND_BOUNDARY .AND. DOT_PRODUCT(BC%NVEC,(/U_WIND(BC%KK),V_WIND(BC%KK),W_WIND(BC%KK)/))<-TWO_EPSILON_EB) THEN
-         B1%TMP_F = B1%TMP_G
-         B1%ZZ_F(1:N_TRACKED_SPECIES) = B1%ZZ_G(1:N_TRACKED_SPECIES)
+      WC => WALL(WALL_INDEX)
+      ! INTERPOLATED_BOUNDARY and PERIODIC_BOUNDARY possible with PERIODIC FLOW ONLY vent
+      IF (WC%BOUNDARY_TYPE/=INTERPOLATED_BOUNDARY .AND. WC%BOUNDARY_TYPE/=PERIODIC_BOUNDARY) THEN
+         IF (OPEN_WIND_BOUNDARY .AND. DOT_PRODUCT(BC%NVEC,(/U_WIND(BC%KK),V_WIND(BC%KK),W_WIND(BC%KK)/))<-TWO_EPSILON_EB) THEN
+            B1%TMP_F = B1%TMP_G
+            B1%ZZ_F(1:N_TRACKED_SPECIES) = B1%ZZ_G(1:N_TRACKED_SPECIES)
+         ENDIF
       ENDIF
 
       ! Ghost cell values
@@ -703,7 +832,7 @@ METHOD_OF_HEAT_TRANSFER: SELECT CASE(SF%THERMAL_BC_INDEX)
 
       ! interp or extrap RHO_OTHER for jump in vertical grid resolution, linear in temperature to match heat flux in divg
 
-      RHO_OTHER = RHOP(BC%II,BC%JJ,BC%KK)
+      ! RHO_OTHER = RHOP(BC%II,BC%JJ,BC%KK)
       ATMOSPHERIC_INTERPOLATION = .FALSE.
       DDO = 1._EB
       KKO = EWC%KKO_MIN
@@ -714,20 +843,11 @@ METHOD_OF_HEAT_TRANSFER: SELECT CASE(SF%THERMAL_BC_INDEX)
       IF (USE_ATMOSPHERIC_INTERPOLATION .AND. STRATIFICATION .AND. ABS(DDO-1._EB)>0.01_EB .AND. ABS(BC%IOR)==3) &
          ATMOSPHERIC_INTERPOLATION = .TRUE.
 
-      IF (ATMOSPHERIC_INTERPOLATION) THEN
-         PBAR_G = PBAR_P(BC%KKG,B1%PRESSURE_ZONE)
-         PBAR_OTHER = EVALUATE_RAMP(MM%ZC(EWC%KKO_MIN),I_RAMP_P0_Z)
-         ZZ_GET(1:N_TRACKED_SPECIES) = MAX(0._EB,MIN(1._EB,ZZP(BC%II,BC%JJ,BC%KK,1:N_TOTAL_SCALARS)))
-         CALL GET_SPECIFIC_GAS_CONSTANT(ZZ_GET,RSUM(BC%II,BC%JJ,BC%KK))
-         DENOM = PBAR_G/B1%RHO_G/RSUM_G + DDO*(PBAR_OTHER/RHO_OTHER/RSUM(BC%II,BC%JJ,BC%KK) - PBAR_G/B1%RHO_G/RSUM_G)
-         RHOP(BC%II,BC%JJ,BC%KK) = PBAR_P(BC%KK,B1%PRESSURE_ZONE)/RSUM(BC%II,BC%JJ,BC%KK)/DENOM
-         TMP(BC%II,BC%JJ,BC%KK) = PBAR_P(BC%KK,B1%PRESSURE_ZONE)/(RSUM(BC%II,BC%JJ,BC%KK)*RHOP(BC%II,BC%JJ,BC%KK))
-      ENDIF
-
-      ! Density, Species and temperature
+      ! Species and temperature
 
       SINGLE_SPEC_IF: IF (N_TOTAL_SCALARS > 1) THEN
 
+         ! face value of temperature
          IF (ATMOSPHERIC_INTERPOLATION) THEN
             B1%TMP_F = (TMP(BC%II,BC%JJ,BC%KK)*DZ(BC%KKG) + TMP(BC%IIG,BC%JJG,BC%KKG)*DZ(BC%KK)) / (DZ(BC%KK)+DZ(BC%KKG))
             B1%ZZ_F(1:N_TOTAL_SCALARS) = (ZZP(BC%II,BC%JJ,BC%KK,1:N_TOTAL_SCALARS)*DZ(BC%KKG) + &
@@ -1341,9 +1461,9 @@ END SUBROUTINE CALCULATE_ZZ_F
 
 SUBROUTINE DEPOSIT_PARTICLE_MASS(LP,LPC)
 
-USE PHYSICAL_FUNCTIONS, ONLY: SURFACE_DENSITY,GET_SPECIFIC_HEAT,GET_SENSIBLE_ENTHALPY
+USE PHYSICAL_FUNCTIONS, ONLY: SURFACE_DENSITY,GET_SPECIFIC_HEAT,GET_SENSIBLE_ENTHALPY,GET_SPECIFIC_GAS_CONSTANT
 USE OUTPUT_DATA, ONLY: M_DOT,Q_DOT
-REAL(EB) :: RADIUS,M_DOT_SINGLE,CP,MW_RATIO,H_G,ZZ_GET(1:N_TRACKED_SPECIES),M_GAS,LENGTH,WIDTH,H_S_B
+REAL(EB) :: RADIUS,M_DOT_SINGLE,CP,MW_RATIO,H_G,ZZ_GET(1:N_TRACKED_SPECIES),M_GAS,LENGTH,WIDTH,H_S_B,RSUM_G
 INTEGER :: NS
 TYPE(BOUNDARY_ONE_D_TYPE), POINTER :: ONE_D
 TYPE(LAGRANGIAN_PARTICLE_TYPE), POINTER :: LP
@@ -1385,9 +1505,10 @@ END SELECT
 ! Add evaporated particle species to gas phase and compute resulting contribution to the divergence
 
 M_GAS = B1%RHO_G/LP%RVC
+CALL GET_SPECIFIC_GAS_CONSTANT(B1%ZZ_G(1:N_TRACKED_SPECIES),RSUM_G)
 DO NS=1,N_TRACKED_SPECIES
    IF (ABS(B1%M_DOT_G_PP_ADJUST(NS))<=TWO_EPSILON_EB) CYCLE
-   MW_RATIO = SPECIES_MIXTURE(NS)%RCON/RSUM(BC%IIG,BC%JJG,BC%KKG)
+   MW_RATIO = SPECIES_MIXTURE(NS)%RCON/RSUM_G
    M_DOT_SINGLE = LP%PWT*B1%M_DOT_G_PP_ADJUST(NS)*B1%AREA
    !$OMP CRITICAL
    D_SOURCE(BC%IIG,BC%JJG,BC%KKG) = D_SOURCE(BC%IIG,BC%JJG,BC%KKG) + M_DOT_SINGLE*(MW_RATIO/M_GAS)
@@ -2860,7 +2981,7 @@ REAL(EB), PARAMETER :: M_DOT_ERROR_TOL=1.E-6_EB, CHAR_DENSITY_THRESHOLD=5._EB ! 
 ! Get surface oxygen mass fraction
 
 IF (O2_INDEX>0) THEN
-   ZZ_GET(1:N_TRACKED_SPECIES) = MAX(0._EB,ZZ(BC%IIG,BC%JJG,BC%KKG,1:N_TRACKED_SPECIES))
+   ZZ_GET(1:N_TRACKED_SPECIES) = MAX(0._EB,B1%ZZ_G(1:N_TRACKED_SPECIES))
    CALL GET_MASS_FRACTION(ZZ_GET,O2_INDEX,Y_O2_F)
 ELSE
    Y_O2_F = 0._EB
@@ -3350,7 +3471,7 @@ MATERIAL_LOOP: DO N=1,N_MATS  ! Loop over all materials in the cell (alpha subsc
             ! Estimate surface oxygen concentration from mass transport
             TMP_FILM = (TMP_F+TMP(IIG,JJG,KKG))/2._EB
             ! Get oxygen mass fraction
-            ZZ_GET(1:N_TRACKED_SPECIES) = MAX(0._EB,ZZ(IIG,JJG,KKG,1:N_TRACKED_SPECIES))
+            ZZ_GET(1:N_TRACKED_SPECIES) = MAX(0._EB,B1%ZZ_G(1:N_TRACKED_SPECIES))
             CALL GET_MASS_FRACTION(ZZ_GET,O2_INDEX,Y_O2)
             CALL GET_SPECIFIC_HEAT(ZZ_GET,CP_FILM,TMP_FILM)
             ! Mass transfer coefficient

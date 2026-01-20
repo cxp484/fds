@@ -18,9 +18,12 @@
 {\input{../Bibliography/gitrevision}}
 {\newcommand{\gitrevision}{unknown}}
 
+\addbibresource{../Bibliography/FDS_refs.bib}
+\addbibresource{../Bibliography/FDS_general.bib}
+\addbibresource{../Bibliography/FDS_mathcomp.bib}
+
 \begin{document}
 
-\bibliographystyle{unsrt}
 \pagestyle{empty}
 
 
@@ -572,8 +575,8 @@ The second way to assess MPI efficiency is known as ``strong scaling.'' Here, yo
 \ee
 In the strong study demonstrated here, a single mesh of dimension 180 by 160 by 120 is divided into a range of smaller meshes, with the smallest partitioning being 432 meshes of dimension 20 by 20 by 20. The resulting decrease in the CPU time of the entire calculation and the major subroutines is shown in the right hand plot of Fig.~\ref{fig:scaling_tests}. Ideally, the CPU time should be inversely proportional to the number of meshes (MPI processes); that is, the relative CPU times ought to follow the black dotted lines. The one notable exception to this rule is for ``COMM'' or COMMunications. This curve represents the time spent in communicating information across the network.
 \begin{figure}[!ht]
-\includegraphics[width=3.2in]{SCRIPT_FIGURES/weak_scaling_test}
-\includegraphics[width=3.2in]{SCRIPT_FIGURES/strong_scaling_test}
+\includegraphics[height=2.2in]{SCRIPT_FIGURES/weak_scaling_test}
+\includegraphics[height=2.2in]{SCRIPT_FIGURES/strong_scaling_test}
 \caption[MPI scaling study]{Example of a weak (left) and strong (right) scaling study.}
 \label{fig:scaling_tests}
 \end{figure}
@@ -991,12 +994,11 @@ The pressure solver in FDS employs Fast Fourier Transforms (FFTs) in the $y$ and
 \subsection{Two-Dimensional and Axially-Symmetric Calculations}
 \label{info:2D}
 
-The governing equations solved in FDS are written in terms of a three dimensional Cartesian coordinate system. However, a two dimensional Cartesian or two dimensional cylindrical (axially-symmetric) calculation can be performed by setting the \ct{J} in the \ct{IJK} triplet to 1 on the \ct{MESH} line. For axial symmetry, add \ct{CYLINDRICAL=T} to the \ct{MESH} line, and the coordinate $x$ is then interpreted as the radial coordinate $r$. If more than one mesh is used, all the meshes must be specified as 2-D or \ct{CYLINDRICAL}---you cannot mix 2-D, 3-D and cylindrical geometries. No boundary conditions should be set at the planes $y=\hbox{\tt YMIN=XB(3)}$ or $y=\hbox{\tt YMAX=XB(4)}$, nor at $r=\hbox{\tt XMIN=XB(1)}$ in an axially-symmetric calculation if $r=\hbox{XB(1)=0}$ (Note that \ct{XB(1)} does not have to be 0). For better visualizations, the difference between \ct{XB(4)} and \ct{XB(3)} should be small so that the Smokeview rendering appears to be in 2-D. An example of an axially-symmetric helium plume is given in Sec.~\ref{baroclinic_torque}.
-
-When processing results for a \ct{CYLINDRICAL} simulation, note that integrated output quantities with the \ct{SPATIAL_STATISTIC} attribute apply only to the specified 2-D or cylindrical coordinates. Thus, the cylindrical coordinates define a cylindrical sector, like a slice of cake, even though Smokeview will not render it this way. The fully integrated quantity can be calculated by multiplying the reported value by $2 \pi \, \delta\theta$, where $\delta\theta$ is the difference between \ct{YMAX} and \ct{YMIN} in radians. The values chosen for \ct{YMAX} and \ct{YMIN} do not matter as long as the rendering in Smokeview is to your liking.
+The governing equations solved in FDS are written in terms of a three-dimensional Cartesian coordinate system. However, a two-dimensional Cartesian or two-dimensional cylindrical (axially-symmetric) calculation can be performed by setting the \ct{J} in the \ct{IJK} triplet to 1 on the \ct{MESH} line. For axial symmetry, add \ct{CYLINDRICAL=T} to the \ct{MESH} line, and the coordinate $x$ is then interpreted as the radial coordinate $r$. If more than one mesh is used, all the meshes must be specified as 2-D or \ct{CYLINDRICAL}---you cannot mix 2-D, 3-D and cylindrical geometries. No boundary conditions should be set at the planes $y=\hbox{\tt YMIN=XB(3)}$ or $y=\hbox{\tt YMAX=XB(4)}$, nor at $r=\hbox{\tt XMIN=XB(1)}$ in an axially-symmetric calculation if $r=\hbox{XB(1)=0}$ (Note that \ct{XB(1)} does not have to be 0). For better visualizations, the difference between \ct{XB(4)} and \ct{XB(3)} should be small so that the Smokeview rendering appears to be in 2-D. An example of an axially-symmetric helium plume is given in Sec.~\ref{baroclinic_torque}.
 
 When performing solid phase heat transfer while using a 2-D \ct{CYLINDRICAL} coordinate system, you must designate \ct{GEOMETRY='CYLINDRICAL'} on a surface (\ct{SURF} line) that is facing radially outward (positive $r$ direction) or \ct{GEOMETRY='INNER CYLINDRICAL'} on a surface that is facing radially inward (negative $r$ direction). In the latter instance, you must also specify the \ct{INNER_RADIUS} (m) of the cylinder. For the outer cylindrical boundary, specify an \ct{INNER_RADIUS} if appropriate. Its default value is 0~m. Because your inward and outward facing boundaries might occur at various radii, you must create separate \ct{SURF} lines for each with the appropriate values of \ct{GEOMETRY} and \ct{INNER_RADIUS}. For an obstruction (\ct{OBST}), use \ct{SURF_ID6} to assign individual \ct{SURF ID}s to each of the six faces. Because this is a 2-D simulation, the third and fourth entries representing the \ct{SURF ID}s in the $y$ or angular direction can just be designated \ct{'INERT'}.
 
+When processing results for a \ct{CYLINDRICAL} simulation, note that integrated output quantities with the \ct{SPATIAL_STATISTIC} attribute refer to the volume or surface area of the entire cylinder, not just the wedge. Smokeview renders the wedge as a 2-D slice. The values chosen for \ct{YMAX} and \ct{YMIN} do not matter as long as the rendering in Smokeview is to your liking. For a 2-D, non-cylindrical geometry, spatially integrated quanties shall be output in units of the quantity per unit meter.
 
 \subsection{Multiple Meshes}
 \label{info:multimesh}
@@ -2292,11 +2294,6 @@ The impinging jet model is an extension of the user-specified $h$ that allows yo
 &SURF ID='WALL', HEAT_TRANSFER_MODEL='IMPINGING JET', XYZ=0,0,1, HEAT_TRANSFER_COEFFICIENT=50, HEAT_TRANSFER_COEFFICIENT_SIGMA=0.5 /
 \end{lstlisting}
 
-\subsubsection{Specifying the Heat Flux at a Solid Surface}
-\label{info:net_and_convective_heat_flux}
-
-Instead of altering the convective heat transfer coefficient, a fixed heat flux may be specified directly.  Two methods are available to do this.  The first is to specify a \ct{NET_HEAT_FLUX} in units of \unit{kW/m^2}.  When this is specified FDS will compute the surface temperature required to ensure that the combined radiative and convective heat flux from the surface is equal to the \ct{NET_HEAT_FLUX}. The second method is to specify the \ct{CONVECTIVE_HEAT_FLUX}, in units of \unit{kW/m^2}. The radiative flux is then determined based on the \ct{EMISSIVITY} on the \ct{SURF} line and the wall temperature needed to get the desired \ct{CONVECTIVE_HEAT_FLUX}. Setting the \ct{EMISSIVITY} to zero will result in there being only a convective heat flux from a surface.  If \ct{NET_HEAT_FLUX} or \ct{CONVECTIVE_HEAT_FLUX} is positive, the wall heats up the surrounding gases. If \ct{NET_HEAT_FLUX} or \ct{CONVECTIVE_HEAT_FLUX} is negative, the wall cools the surrounding gases. You cannot specify \ct{TMP_FRONT} with \ct{NET_HEAT_FLUX} since \ct{NET_HEAT_FLUX} combines radiative and convective flux, and FDS must compute the wall temperature to get the desired flux. Specifying \ct{TMP_FRONT} and \ct{CONVECTIVE_HEAT_FLUX} will result in FDS using the gas temperature adjacent to a wall cell to set the convection heat transfer coefficient to achieve the desired \ct{CONVECTIVE_HEAT_FLUX} for that wall cell. If a droplet lands surface with a specified heat flux, no heat transfer will be predicted between the droplet and the surface. This is because the high heat transfer rates associated with droplets can lead to nonsensical wall temperatures when trying to enforce the specific flux which are then likely to result in runtime errors or numerical instabilities.
-
 \subsubsection{Logarithmic Law of the Wall}
 
 Near-wall treatments, such as wall models or wall functions, aim to mimic the sudden change from molecular to turbulent transport close to the walls using algebraic formulations without the need of resolving the otherwise computationally expensive region of the near-wall flow-field. The main theory follows dimensional analysis based on the idea that shear at the wall is constant. Accordingly, the non-dimensional velocity $u^+$ is calculated using a wall function \cite{FDS_Tech_Guide}.
@@ -2315,6 +2312,14 @@ If a surface is emitting (``blowing'') or removing (``sucking'') gas, the flow n
       h_{\rm blowing} = \underbrace{\left[\frac{\Phi_h}{{\exp}(\Phi_h)-1}\right]}_{{\mbox{\scriptsize \tt BLOWING CORRECTION}}} h \quad ; \quad \Phi_h = \frac{\dot{m}'' c_p}{h}
 \end{equation}
 where $h$ is the unadjusted heat transfer coefficient, $\dot{m}''$ is the mass flow rate per unit area (positive for blowing), and $c_p$ is the specific heat of the gas.,
+
+
+\subsubsection{Specifying the Heat Flux at a Solid Surface}
+\label{info:net_and_convective_heat_flux}
+
+Instead of altering the convective heat transfer coefficient, a fixed heat flux may be specified directly.  Two methods are available to do this.  The first is to specify a \ct{NET_HEAT_FLUX} in units of \unit{kW/m^2}.  When this is specified FDS will compute the surface temperature required to ensure that the combined radiative and convective heat flux from the surface is equal to the \ct{NET_HEAT_FLUX}. The second method is to specify the \ct{CONVECTIVE_HEAT_FLUX}, in units of \unit{kW/m^2}. The radiative flux is then determined based on the \ct{EMISSIVITY} on the \ct{SURF} line and the wall temperature needed to get the desired \ct{CONVECTIVE_HEAT_FLUX}. Setting the \ct{EMISSIVITY} to zero will result in there being only a convective heat flux from a surface.  If \ct{NET_HEAT_FLUX} or \ct{CONVECTIVE_HEAT_FLUX} is positive, the wall heats up the surrounding gases. If \ct{NET_HEAT_FLUX} or \ct{CONVECTIVE_HEAT_FLUX} is negative, the wall cools the surrounding gases. You cannot specify \ct{TMP_FRONT} with \ct{NET_HEAT_FLUX} since \ct{NET_HEAT_FLUX} combines radiative and convective flux, and FDS must compute the wall temperature to get the desired flux. Specifying \ct{TMP_FRONT} and \ct{CONVECTIVE_HEAT_FLUX} will result in FDS using the gas temperature adjacent to a wall cell to set the convection heat transfer coefficient to achieve the desired \ct{CONVECTIVE_HEAT_FLUX} for that wall cell. If a droplet lands surface with a specified heat flux, no heat transfer will be predicted between the droplet and the surface. This is because the high heat transfer rates associated with droplets can lead to nonsensical wall temperatures when trying to enforce the specific flux which are then likely to result in runtime errors or numerical instabilities.
+
+The \ct{SURF} parameters \ct{NET_HEAT_FLUX} and \ct{CONVECTIVE_HEAT_FLUX} will not work with a \ct{MATL_ID}.  When 1D heat conduction into the solid is considered, you can specify an \ct{EXTERNAL_FLUX} as discussed in Sec.~\ref{info:simulating_the_cone_calorimeter}, which \emph{supplements} the net surface heat flux.  But in certain situations (usually for verification tests), you may want to directly control the incident radiative heat flux to the surface.  To do this, you can use \ct{EXTERNAL_FLUX} and add \ct{SKIP_INRAD=T} on the \ct{SURF} line.  The incoming radiation to the surface is then \emph{replaced} by the specified \ct{EXTERNAL_FLUX}.
 
 \subsection{Adiabatic Surfaces}
 \label{info:adiabatic}
@@ -3079,7 +3084,7 @@ The solid phase reaction represented by Fig.~\ref{pyrolysis} is fairly simple---
 \label{pyrolysis_2}
 \end{figure}
 
-The plot in Fig.~\ref{pyrolysis_2} contains two sets of curves. The solid curves represent the solution of the set of equations computed using a Matlab ODE solver, and the underlying dashed curves are a ``fit'' of the Matlab solution using FDS. The \ct{MATL} line for the solid material contains the following three parameters that define its decomposition:
+The plot in Fig.~\ref{pyrolysis_2} contains two sets of curves. The solid curves represent the solution of the set of equations computed using a numerical ODE solver, and the underlying dashed curves are a ``fit'' of the solution using FDS. The \ct{MATL} line for the solid material contains the following three parameters that define its decomposition:
 \begin{lstlisting}
 &MATL ID                    = '...'
       ...
@@ -3087,7 +3092,7 @@ The plot in Fig.~\ref{pyrolysis_2} contains two sets of curves. The solid curves
       PYROLYSIS_RANGE       = 100.
       HEATING_RATE          = 5.   /
 \end{lstlisting}
-The \ct{REFERENCE_TEMPERATURE} is the temperature in $^\circ$C where the mass loss rate is at its peak. The \ct{HEATING_RATE} is the linear temperature rise ($^\circ$C/min) used in the TGA experiment, which is represented here by the Matlab solution. The \ct{PYROLYSIS_RANGE} is the approximate ``width'' of the second red hump in Fig.~\ref{pyrolysis_2}, fit by inspection. That is, the value of 100~$^\circ$C was chosen by trial and error. This is typically how one would choose kinetic parameters in FDS to match a given TGA curve.
+The \ct{REFERENCE_TEMPERATURE} is the temperature in $^\circ$C where the mass loss rate is at its peak. The \ct{HEATING_RATE} is the linear temperature rise ($^\circ$C/min) used in the TGA experiment, which is represented here by the numerical solution. The \ct{PYROLYSIS_RANGE} is the approximate ``width'' of the second red hump in Fig.~\ref{pyrolysis_2}, fit by inspection. That is, the value of 100~$^\circ$C was chosen by trial and error. This is typically how one would choose kinetic parameters in FDS to match a given TGA curve.
 
 
 
@@ -3303,9 +3308,8 @@ Note that the 3-D heat conduction equation is solved via 1-D segments in all thr
 \paragraph{Case 11} (\ct{box_burn_away11}) The ``box'' in this case consists of 0.4~m by 0.4~m by 1~cm plates forming a collection of 10~cm cubical compartments. There are 15 plates in all, each with a density of 20~kg/m$^3$. The total mass is 0.48~kg.
 
 \begin{figure}[!ht]
-\begin{tabular*}{\textwidth}{lr}
-\includegraphics[width=3.0in]{SCRIPT_FIGURES/box_burn_away11} &
-\end{tabular*}
+\centering
+\includegraphics[width=3.0in]{SCRIPT_FIGURES/box_burn_away11}
 \caption[Results of the \ct{box_burn_away11} test case]{Output of \ct{box_burn_away11} test case.}
 \label{box_burn_away_11}
 \end{figure}
@@ -3325,7 +3329,7 @@ Note that the 3-D heat conduction equation is solved via 1-D segments in all thr
 
 \subsection{Delamination of layers}
 \label{info:surf_delamination}
-Delamination (fall-off) of material layers can occur e.g. in glued materials, such as Cross-Laminated Timber (CLT). Two different criteria can be used to enforce a delamination of \ct{SURF} layers: \ct{DELAMINATION\_TMP(NL)} sets the temperature criterion; if the last cell of the layer \ct{NL} exceeds this temperature, all layers from the first to \ct{NL}'th (of this particular wall cell) will be removed. Their mass will simply disappear from the computation, and the following layer will befome the surface of the wall. Similarly, specifying \ct{DELAMINATION\_DENSITY(NL)} will remove the layers 1 to \ct{NL} if the density of the \ct{NL}th layer's last cell decreases below the threshold.
+Delamination (fall-off) of material layers can occur e.g. in glued materials, such as Cross-Laminated Timber (CLT). Two different criteria can be used to enforce a delamination of \ct{SURF} layers: \ct{DELAMINATION_TMP(NL)} sets the temperature criterion; if the last cell of the layer \ct{NL} exceeds this temperature, all layers from the first to \ct{NL}'th (of this particular wall cell) will be removed. Their mass will simply disappear from the computation, and the following layer will befome the surface of the wall. Similarly, specifying \ct{DELAMINATION_DENSITY(NL)} will remove the layers 1 to \ct{NL} if the density of the \ct{NL}th layer's last cell decreases below the threshold.
 
 \newpage
 
@@ -3336,6 +3340,7 @@ Delamination (fall-off) of material layers can occur e.g. in glued materials, su
 The \ct{SURF} and \ct{MATL} lines describing the pyrolysis of real materials consist of a combination of empirical and fundamental properties, often originating from different sources. How do you know that the various property values and the associated thermo-physical model in FDS constitute an appropriate description of the solid? For a full-scale simulation, it is hard to untangle the uncertainties associated with the gas and solid phase routines. However, you can perform a simple check of any set of solid phase model by essentially turning off the gas phase.  In the following sections, guidance is provided on how to perform a quick simulation of the cone calorimeter and bench-scale measurements like thermal gravimetric analysis (TGA), differential scanning calorimetry (DSC), and micro-combustion calorimetry (MCC).
 
 \subsection{Simulating the Cone Calorimeter}
+\label{info:simulating_the_cone_calorimeter}
 
 This section describes how to set up a simple model of the cone calorimeter or similar apparatus. This is not a full 3-D simulation of the apparatus, but rather a 1-D simulation of the solid phase degradation under an imposed external heat flux. While a full 3-D simulation of the cone heater and sample holder can be created in FDS, such a simulation would take some time to complete and would not disentangle issues with the solid phase model from uncertainties in the gas phase. It is worthwhile to perform a quick simulation like the one described here to test the solid phase model only.
 \begin{enumerate}
@@ -5646,10 +5651,12 @@ Internally, CVODE assigns default values to several key parameters, as listed be
 \item \ct{MIN_EQUIV_RATIO}=0.0
 \item \ct{MAX_EQUIV_RATIO}=20.0
 \item \ct{DO_CHEM_LOAD_BALANCE}=T
+\item \ct{CVODE_ORDER}=0
 \end{itemize}
 The parameter \ct{FINITE_RATE_MIN_TEMP} defines the minimum temperature (in $^\circ$C) above which chemistry calculation will be performed. CVODE allows specification of relative and absolute tolerances at the species level using the \ct{ODE_REL_ERROR} and \ct{ODE_ABS_ERROR} parameters in the \ct{SPEC} input line. These tolerances can also be set globally in the \ct{COMB} input line, with species-level settings taking precedence. Currently, CVODE does not allow relative tolerance at the species level. The minimum concentration of a species is determined as the product of \ct{ODE_REL_ERROR} and \ct{ZZ_MIN_GLOBAL}. Concentrations below this threshold are treated as zero.
 
-Additional optional parameters include \ct{EQUIV_RATIO_CHECK}, \ct{MIN_EQUIV_RATIO}, and \ct{MAX_EQUIV_RATIO}. When \ct{EQUIV_RATIO_CHECK} is enabled (set to true), the chemistry calculation is performed only for those cells for which equivalence ratio is within the specified \ct{MIN_EQUIV_RATIO} and \ct{MAX_EQUIV_RATIO} limits, reducing computational time. Enabling \ct{DO_CHEM_LOAD_BALANCE} significantly accelerates chemistry calculations by distributing the computational load evenly across all MPI processes.
+Additional optional parameters include \ct{EQUIV_RATIO_CHECK}, \ct{MIN_EQUIV_RATIO}, and \ct{MAX_EQUIV_RATIO}. When \ct{EQUIV_RATIO_CHECK} is enabled (set to true), the chemistry calculation is performed only for those cells for which equivalence ratio is within the specified \ct{MIN_EQUIV_RATIO} and \ct{MAX_EQUIV_RATIO} limits, reducing computational time. Enabling \ct{DO_CHEM_LOAD_BALANCE} significantly accelerates chemistry calculations by distributing the computational load evenly across all MPI processes. The parameter \ct{CVODE_ORDER} controls the order of discretization when solving the ODE system. By default (0), CVODE dynamically selects an order between 1 and 5. For very stiff problems, the user may specify a lower order (1 or 2) to improve stability, at the cost of slower performance because CVODE will take much smaller internal substeps.
+
 User can modify the default values of any or all of these parameters as needed using the following line in the FDS input file:
 \begin{lstlisting}
 &COMB
@@ -7044,7 +7051,9 @@ Note that $\rho$ (kg/m$^3$) is the density and $c_p$ is the specific heat of the
 
 \subsection{Example}
 
-Figure~\ref{ABL_profiles} displays velocity and temperature profiles generated by FDS over a 1000~m square domain with periodic boundaries and a height of 200~m. The wind fields are generated using pressure gradient forces, $F$, of various values, and the ground is given several different values of \ct{CONVECTIVE_HEAT_FLUX} ($\dot{q}_{\rm c}''$) and surface \ct{ROUGHNESS} ($s$). Eqs.~(\ref{eq:roughness_conversion}) and (\ref{qdot_L}) are used to convert the specified $\dot{q}_{\rm c}''$ and $s$ to $L$ and $z_0$ that are then used to generate Monin-Obukhov velocity and temperature profiles with which to compare the simulations. Note that these simulations do not invoke the Monin-Obukhov profiles directly. Rather, the M-O profiles are used to test if the FDS simulations produce realistic vertical profiles using just a specified pressure gradient force, $F$, surface roughness, $s$, and surface heat flux, $\dot{q}_{\rm c}''$.
+Figure~\ref{ABL_profiles} displays velocity and temperature profiles generated by FDS over a 1000~m square domain with periodic boundaries and a height of 400~m. The wind fields are generated using a pressure gradient force, $F$, of various values, and the ground is given several different values of \ct{CONVECTIVE_HEAT_FLUX} ($\dot{q}_{\rm c}''$) and surface \ct{ROUGHNESS} ($s$). Eqs.~(\ref{eq:roughness_conversion}) and (\ref{qdot_L}) are used to convert the specified $\dot{q}_{\rm c}''$ and $s$ to $L$ and $z_0$ that are then used to generate Monin-Obukhov velocity and temperature profiles with which to compare the simulations. Note that these simulations do not invoke the Monin-Obukhov profiles directly. Rather, the M-O profiles are used to test if the FDS simulations produce realistic vertical profiles from the specified pressure gradient force, $F$, surface roughness, $s$, and surface heat flux, $\dot{q}_{\rm c}''$. The simulations are initialized with a temperature lapse rate of -0.01~K/m, and the laterial boundary condition is \ct{'PERIODIC FLOW ONLY'}, meaning that the velocity field is periodic but the temperature field is not. The upper boundary is \ct{'OPEN'} with a specified \ct{SPEED} that is approximately the same as that which is predicted by M-O theory. In this regard, the profiles are not predicted based solely on the pressure gradient force and ground properties. Rather, lateral and ceiling conditions are needed to match the resulting profiles.
+
+The purpose of this example is to demonstrate that you can establish a realistic temperature and velocity profile even when the ground surface is not flat. Simulations like those shown here can be used to test if a given pressure gradient force and a ground roughness and heat flux are appropriate for a simulation over complex terrain.
 
 \begin{figure}[p]
    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
@@ -8907,47 +8916,48 @@ In this example, a fire spreads radially from a single point as directed by the 
 \label{info:external_control}
 \label{external_control}
 
-It is possible to externally control some aspects of an FDS simulation while the simulation is running. Any FDS input that has either a \ct{RAMP_ID} (except for the output time ramps on \ct{DUMP} such as \ct{RAMP_BNDF}) or a \ct{CTRL_ID} as one of its inputs can be externally controlled. A \ct{RAMP} can be externally controlled by setting \ct{EXTERNAL_FILE} on \ct{RAMP}. A \ct{CTRL} can be externally controlled by setting \ct{FUNCTION_TYPE='EXTERNAL'}.
+It is possible to externally control some aspects of an FDS simulation while the simulation is running. These include most \ct{RAMP}s and the logical state of any \ct{CTRL}. The logical state of a \ct{CTRL} can be externally controlled by setting \ct{FUNCTION_TYPE='EXTERNAL'} on the \ct{CTRL} input. A \ct{RAMP} can be externally controlled by setting \ct{EXTERNAL_FILE} on \ct{RAMP}. \ct{RAMP}s used during initialization only cannot be externally controlled. These include \ct{RAMP}s controlling time (such as the output time \ct{RAMP}s on \ct{DUMP} like \ct{RAMP_BNDF}), defining \ct{SPEC} or \ct{MATL} physical properties (such as \ct{CONDUCTIVITY_RAMP} on \ct{MATL}), defining particle distributions (such as \ct{CNF_RAMP} on \ct{PART}), defining atmospheric conditions (such as \ct{RAMP_T0_Z} on \ct{WIND}), or for defining the initial surface temperature {\ct{RAMP_T_I} on \ct{SURF}) cannot be externally controlled.
 
-When external control is selected, FDS will set the value of the \ct{RAMP} or the logical state of the \ct{CTRL} based on values contained in a csv file whose name is given by \ct{EXTERNAL_FILENAME} on \ct{MISC}. This file will be checked for new values every \ct{DT_EXTERNAL} on \ct{TIME} seconds. Only those inputs whose values are being changed need to specified. For inputs not specified or if the file does not exist or cannot be opened (e.g., locked by the operating system during a file write), the current values will be kept. The initial values are defined with either \ct{INITIAL_VALUE} on \ct{RAMP} or \ct{INITIAL_STATE} on \ct{CTRL}. FDS can be forced to wait if no file is present or use an alternate \ct{EXTERNAL_FILENAME} by specifying \ct{DT_EXTERNAL_HEARTBEAT} and \ct{EXTERNAL_HEARTBEAT_FILENAME} on \ct{TIME}. With this approach FDS looks for \ct{EXTERNAL_HEARTBEAT_FILENAME}. If the file is not found FDS will wait up to \ct{DT_EXTERNAL_HEARTBEAT} seconds. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is still not present, FDS will stop trying to update the external controls.  If \ct{HEARTBEAT_FAIL} on \ct{TIME} is true, FDS will stop the simulation. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is present, FDS will read \ct{EXTERNAL_FILENAME} from it. If your external program requires that output files it reads be current, set \ct{DT_FLUSH} to be less than the \ct{DT} values for any file types being used by the external program.
+	Any FDS input that has either a \ct{RAMP_ID} (except for the output time ramps on \ct{DUMP} such as \ct{RAMP_BNDF}) or a \ct{CTRL_ID} as one of its inputs can be externally controlled. A \ct{RAMP} can be externally controlled by setting \ct{EXTERNAL_FILE} on \ct{RAMP}. A \ct{CTRL} can be externally controlled by setting \ct{FUNCTION_TYPE='EXTERNAL'}.
 
-The csv file format is:
-\begin{lstlisting}
-      Type(1), ID(1), Value(1)
-      Type(2), ID(2), Value(2)
-      .
-      .
-\end{lstlisting}
-where \ct{Type} is either \ct{RAMP} or \ct{CTRL}, \ct{ID} is the corresponding \ct{ID} in the FDS input files, and \ct{Value} is the new output value for a \ct{RAMP} or the new logical state for a \ct{CTRL} where positive values mean the \ct{CTRL} evaluates as \ct{TRUE} and negative values mean the function evaluates as \ct{FALSE}.
+	When external control is selected, FDS will set the value of the \ct{RAMP} or the logical state of the \ct{CTRL} based on values contained in a csv file whose name is given by \ct{EXTERNAL_FILENAME} on \ct{MISC}. This file will be checked for new values every \ct{DT_EXTERNAL} on \ct{TIME} seconds. Only those inputs whose values are being changed need to specified. For inputs not specified or if the file does not exist or cannot be opened (e.g., locked by the operating system during a file write), the current values will be kept. The initial values are defined with either \ct{INITIAL_VALUE} on \ct{RAMP} or \ct{INITIAL_STATE} on \ct{CTRL}. FDS can be forced to wait if no file is present or use an alternate \ct{EXTERNAL_FILENAME} by specifying \ct{DT_EXTERNAL_HEARTBEAT} and \ct{EXTERNAL_HEARTBEAT_FILENAME} on \ct{TIME}. With this approach FDS looks for \ct{EXTERNAL_HEARTBEAT_FILENAME}. If the file is not found FDS will wait up to \ct{DT_EXTERNAL_HEARTBEAT} seconds. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is still not present, FDS will stop trying to update the external controls.  If \ct{HEARTBEAT_FAIL} on \ct{TIME} is true, FDS will stop the simulation. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is present, FDS will read \ct{EXTERNAL_FILENAME} from it. If your external program requires that output files it reads be current, set \ct{DT_FLUSH} to be less than the \ct{DT} values for any file types being used by the external program.
 
-An example set of inputs is below:
-\begin{lstlisting}
-&MISC EXTERNAL_FILENAME='external_test_input.csv'/
-&TIME T_END=10,DT_EXTERNAL=5/
+	The csv file format is:
+	\begin{lstlisting}
+		Type(1), ID(1), Value(1)
+		Type(2), ID(2), Value(2)
+		.
+		.
+	\end{lstlisting}
+	where \ct{Type} is either \ct{RAMP} or \ct{CTRL}, \ct{ID} is the corresponding \ct{ID} in the FDS input files, and \ct{Value} is the new output value for a \ct{RAMP} or the new logical state for a \ct{CTRL} where positive values mean the \ct{CTRL} evaluates as \ct{TRUE} and negative values mean the function evaluates as \ct{FALSE}.
 
-&OBST XB=0.0,0.1,0,1,0,1/
-&VENT XB=0.1,0.1,0,1,0,1,SURF_ID='FLOW',CTRL_ID='VENT CTRL'/
-&SURF ID='FLOW',VEL=-1,COLOR='BLUE',TAU_V=0/
-&CTRL ID='VENT CTRL',FUNCTION_TYPE='EXTERNAL',INITIAL_STATE=T/
+	An example set of inputs is below:
+	\begin{lstlisting}
+		&MISC EXTERNAL_FILENAME='external_test_input.csv'/
+		&TIME T_END=10,DT_EXTERNAL=5/
 
-&VENT XB=2,2,0,1,0,1,SURF_ID='HOT'/
-&SURF ID='HOT',TMP_FRONT=1000,RAMP_T='T RAMP',COLOR='RED'/
-&RAMP ID='T RAMP',EXTERNAL_FILE=T,INITIAL_VALUE=0.081633/
-\end{lstlisting}
-In these inputs a vent with a fixed velocity is externally controlled by a \ct{CTRL} that is initially \ct{TRUE}, and a vent with a fixed temperature is externally controlled with a \ct{RAMP} with an initial ramp value that results in a temperature of 100~$^\circ$C. These vents are applied to two faces of a 1 m$^3$ box. At 5~s, the csv file is read with contents of:
-\begin{lstlisting}
-RAMP,"T RAMP"   , 1
-CTRL,"VENT CTRL",-1
-\end{lstlisting}
-This turns off the velocity vent (a negative \ct{CTRL} value means set the state to \ct{.FALSE.}) and sets the fixed temperature vent to 1000~$^\circ$C (a \ct{RAMP} value of 1 means apply the full value of \ct{TMP_FRONT}). Note that the \ct{ID} strings are enclosed in quotes. This is only required if the string has a space or comma in it.  Results of running the case are shown in Fig.~\ref{external_control_fig}
+		&OBST XB=0.0,0.1,0,1,0,1/
+		&VENT XB=0.1,0.1,0,1,0,1,SURF_ID='FLOW',CTRL_ID='VENT CTRL'/
+		&SURF ID='FLOW',VEL=-1,COLOR='BLUE',TAU_V=0/
+		&CTRL ID='VENT CTRL',FUNCTION_TYPE='EXTERNAL',INITIAL_STATE=T/
 
-\begin{figure}[ht]
-      \includegraphics[width=3in]{SCRIPT_FIGURES/external_test_temperature}
-      \includegraphics[width=3in]{SCRIPT_FIGURES/external_test_velocity}
-      \caption[Results of the \ct{external_test} test case]{(Left) Surface temperature. (Right) Wall velocity.}
-      \label{external_control_fig}
-\end{figure}
+		&VENT XB=2,2,0,1,0,1,SURF_ID='HOT'/
+		&SURF ID='HOT',TMP_FRONT=1000,RAMP_T='T RAMP',COLOR='RED'/
+		&RAMP ID='T RAMP',EXTERNAL_FILE=T,INITIAL_VALUE=0.081633/
+	\end{lstlisting}
+	In these inputs a vent with a fixed velocity is externally controlled by a \ct{CTRL} that is initially \ct{TRUE}, and a vent with a fixed temperature is externally controlled with a \ct{RAMP} with an initial ramp value that results in a temperature of 100~$^\circ$C. These vents are applied to two faces of a 1 m$^3$ box. At 5~s, the csv file is read with contents of:
+	\begin{lstlisting}
+		RAMP,"T RAMP"   , 1
+		CTRL,"VENT CTRL",-1
+	\end{lstlisting}
+	This turns off the velocity vent (a negative \ct{CTRL} value means set the state to \ct{.FALSE.}) and sets the fixed temperature vent to 1000~$^\circ$C (a \ct{RAMP} value of 1 means apply the full value of \ct{TMP_FRONT}). Note that the \ct{ID} strings are enclosed in quotes. This is only required if the string has a space or comma in it.  Results of running the case are shown in Fig.~\ref{external_control_fig}
 
+	\begin{figure}[ht]
+		\includegraphics[width=3in]{SCRIPT_FIGURES/external_test_temperature}
+		\includegraphics[width=3in]{SCRIPT_FIGURES/external_test_velocity}
+		\caption[Results of the \ct{external_test} test case]{(Left) Surface temperature. (Right) Wall velocity.}
+		\label{external_control_fig}
+	\end{figure}
 
 \chapter{Numerical Considerations}
 \label{info:MISC}
@@ -9140,7 +9150,7 @@ Scheme                              & \ct{FLUX_LIMITER} \\
 Central differencing                & \ct{'CENTRAL'}  \\
 Godunov                             & \ct{'GODUNOV'}  \\
 Superbee (VLES, SVLES default)      & \ct{'SUPERBEE'}  \\
-CHARM (DNS, LES default)            & \ct{'CHARM'}  \\ 
+CHARM (DNS, LES default)            & \ct{'CHARM'}  \\
 \hline
 \end{tabular}
 \end{table}
@@ -9459,8 +9469,8 @@ ULMAT             & \checkmark  & \checkmark    & \checkmark & \checkmark & iter
 ULMAT HYPRE$^6$   & \checkmark  & \checkmark    & \checkmark & \checkmark & iterative & exact      & iterative \\
 GLMAT             & $\times$    & $\times$      & \checkmark & \checkmark & exact     & iterative  & iterative \\
 \rowcolor{lavender}
-UGLMAT            & $\times$    & $\times$      & \checkmark & \checkmark & exact     & exact      & iterative \\
-UGLMAT HYPRE$^7$  & $\times$    & $\times$      & \checkmark & \checkmark & exact     & exact      & iterative \\
+UGLMAT            & \checkmark$^7$  & \checkmark    & \checkmark & \checkmark & exact     & exact      & iterative \\
+UGLMAT HYPRE$^{6,8}$  & \checkmark$^7$  & \checkmark    & \checkmark & \checkmark & exact     & exact      & iterative \\
 % PFFT$^8$ (future) & $\times$    & 1 direction   & \checkmark & \checkmark & exact     & iterative  & iterative \\
 \bottomrule
 \end{tabular}
@@ -9473,9 +9483,10 @@ UGLMAT HYPRE$^7$  & $\times$    & $\times$      & \checkmark & \checkmark & exac
         \item[$^3$] ``Velocity @ Mesh'' refers to errors in the normal component of velocity at mesh boundaries, so-called ``interpolated'' boundaries in FDS.  For inexact solvers, this error may be controlled using the parameter \ct{VELOCITY_TOLERANCE}.  Mass conservation errors are proportional to the velocity tolerance.  Solvers listed as ``exact'' are \emph{global} solvers.  ``Global'' refers to a global matrix solution, one matrix for the whole domain, as opposed to one matrix per mesh.  Thus, there are no mesh boundary errors for this type of solver.
         \item[$^4$] ``Velocity @ Solid'' refers to errors in the normal component of velocity at solid boundaries, so-called ``penetration'' errors that are present in \emph{immersed boundary methods} and lead to mass conservation errors.  These errors are particularly important to control for tightly sealed pressure zones. For inexact solvers, this error may be controlled using the parameter \ct{VELOCITY_TOLERANCE}. Mass conservation errors are proportional to the velocity tolerance.  Solvers listed as ``exact'' are \emph{unstructured} solvers.  ``Unstructured'' means the solid boundaries (e.g., \ct{OBST} boundaries) are treated as domain boundaries for the pressure Poisson equation.  Unstructured solvers are the opposite of \emph{immersed boundary methods}.
         \item[$^5$] ``Inseparability'' refers to handling the error compared to the solution of the \emph{inseparable} Poisson equation incurred by lagging the pressure in the baroclinic term.  This error may be controlled using the parameter \ct{PRESSURE_TOLERANCE}.
-        \item[$^6$] ULMAT HYPRE uses the HYPRE library developed at Lawrence Livermore National Laboratories (LLNL).  Use this variant of ULMAT if the Intel MKL library is not available \emph{or} if MKL runs out of memory or is too slow due to memory issues with large mesh blocks.  Our implementation of HYPRE uses an algebraic multi-grid (AMG) preconditioned conjugate gradient (PCG) method, which does not require excessive amounts of memory.
-        \item[$^7$] Use this variant of UGLMAT for cases where the total number of cells is greater than 1 million.
-        % \item[$^8$] PFFT stands for Parallel Fast Fourier Transform.  This solver is only possible for block structured domains.  The domain decomposition for the pressure solver differs from the transport solver.  It uses pencil-shaped domains that span each direction and thus perform FFT solves in each direction for the whole domain.  Data is transferred in each stage of the solution to the orthogonal directions.  This solver is \emph{global} but \emph{structured}.  So, mesh to mesh errors are eliminated but immersed boundary errors are not.
+        \item[$^6$] ULMAT and UGLMAT HYPRE use the HYPRE library developed at Lawrence Livermore National Laboratories (LLNL).  Use this variant if the Intel MKL library is not available \emph{or} if MKL runs out of memory or is too slow due to memory issues with large mesh blocks.  Our implementation of HYPRE uses an algebraic multi-grid (AMG) preconditioned conjugate gradient (PCG) method, which does not require excessive amounts of memory.
+        \item[$^7$] Refinement works for cases with Cartesian geometry (\ct{OBST}) only.
+        \item[$^8$] Use this variant of UGLMAT for cases where the total number of cells is greater than 1 million.
+        % \item[$^9$] PFFT stands for Parallel Fast Fourier Transform.  This solver is only possible for block structured domains.  The domain decomposition for the pressure solver differs from the transport solver.  It uses pencil-shaped domains that span each direction and thus perform FFT solves in each direction for the whole domain.  Data is transferred in each stage of the solution to the orthogonal directions.  This solver is \emph{global} but \emph{structured}.  So, mesh to mesh errors are eliminated but immersed boundary errors are not.
     \end{itemize}
 \end{tablenotes}
 \end{threeparttable}
@@ -9961,6 +9972,9 @@ A set of additional \ct{SPATIAL_STATISTIC}'s are available for use with \ct{QUAN
 \end{lstlisting}
 would output the total surface area in the volume \ct{XB} where the total heat flux exceeds 10~\unit{kW/m^2}.
 
+\subsubsection{Two-Dimensional and Cylindrical Coordinate Systems}
+
+If the computational domain is two-dimensional or cylindrical, some spatially-integrated quantities are adjusted to eliminate the dependence on the arbitrarily chosen $\delta y$ or $\delta \theta$. For a 2-D domain, a reported volume output will have units of m$^3$/m and an area output will have units of m$^2$/m. For a cylindrical domain, volume and area outputs are reported for the entire cylinder rather than the thin wedge on which the simulation is performed. This might cause confusion in cases where both the input parameters and simulation results involve volumetric or areal quantities; thus, it is good practice to perform a simple test case with a known result to verify that these adjustments have been performed properly.
 
 
 \subsection{Temporally-Integrated Outputs}
@@ -10563,14 +10577,14 @@ Figure~\ref{fig:thermocouple_time_constant} shows the results of a simple test c
 \label{info:bidir_probe}
 \label{bi_dir}
 
-The output quantity \ct{BI-DIRECTIONAL PROBE} is the velocity of a modeled bi-directional probe. A bi-directional probe uses the following equation:
+The output quantity \ct{BI-DIRECTIONAL PROBE} is the velocity of a modeled bi-directional probe. A bi-directional probe uses the following equation~\cite{McCaffrey:1976}:
 \be
 C \sqrt{\frac{2 \Delta P}{\rho}}
 \label{BDP}
 \ee
 where $C$ is a calibration constant (default value is 0.93), $\Delta P$ is the pressure difference across the probe, and $\rho$ is the gas density at the probe. In a typical experiment, the gas density is computed assuming standard pressure (101325 Pa), the molecular weight of air (28.8 g/mol), and the temperature as measured by a thermocouple near the probe.
 
-Bi-directional probes have biases due to both the Reynolds number (based on the probe diameter) of the flow and the angle of the flow with respect to the probe axis~\cite{McCaffrey:1976}. At low Reynolds number a probe will measure a higher effective velocity. As the angle of the flow vector with the axis increases, the effective velocity at first increases up to an angle of 30$^\circ$ due to a low pressure region forming downstream of the probe, and then decreases reaching no measured flow at an angle of 90$^\circ$. This model accounts for these sensitivities and the impact of density differences from varied molecular weight at the probe. The orientation of the probe can be specified with either \ct{IOR} or \ct{ORIENTATION} on \ct{DEVC}. A probe with \ct{IOR}=-1 would have a positive velocity output when the flow is in the -x direction. Parameters for the probe can be specified with a \ct{PROP_ID} on the \ct {DEVC}. The calibration constant (default of 0.93) and the probe diameter (default of 0.0254 m) can be set respectively with \ct{CALIBRATION_CONSTANT} and \ct{PROBE_DIAMETER} on \ct{PROP}. If the probe temperature is an aspirated thermocouple or other measurement not sensitive to the radiative environment, then set \ct{TC=F} on \ct{PROP}. Thermocouple specific properties for a bi-directional probe, see Section~\ref{info:THERMOCOUPLE}, should be set with the same \ct{PROP} as for the probe.
+Bi-directional probes have biases due to both the Reynolds number (based on the probe diameter) of the flow and the angle of the flow with respect to the probe axis~\cite{McCaffrey:1976}. At low Reynolds number a probe will measure a higher effective velocity. As the angle of the flow vector with the axis increases, the effective velocity at first increases up to an angle of 30$^\circ$ due to a low pressure region forming downstream of the probe, and then decreases reaching no measured flow at an angle of 90$^\circ$. This model accounts for these sensitivities and the impact of density differences from varied molecular weight at the probe. The orientation of the probe can be specified with either \ct{IOR} or \ct{ORIENTATION} on \ct{DEVC}. A probe with \ct{IOR}=-1 would have a positive velocity output when the flow is in the -x direction. Parameters for the probe can be specified with a \ct{PROP_ID} on the \ct {DEVC}. The calibration constant (default of 0.93) and the probe diameter (default of 0.0254 m) can be set respectively with \ct{CALIBRATION_CONSTANT} and \ct{PROBE_DIAMETER} on \ct{PROP}. If the probe temperature is an aspirated thermocouple or other measurement not sensitive to the radiative environment, then set \ct{TC=F} on \ct{PROP}. Thermocouple specific properties for a bi-directional probe, see Section~\ref{info:THERMOCOUPLE}, should be set with the same \ct{PROP} as for the probe. If a dynamic calibration constant based on the Reynolds number calibration in McCaffrey~\cite{McCaffrey:1976} was used set \ct{CALIBRATION_CONSTANT=-1}.
 
 Figure~\ref{bi_dir_fig} shows the results of a bi-directional probe with varying angle to a 1~m/s flow and varying flow speed.
 \begin{figure}[ht]
@@ -11929,7 +11943,7 @@ would output the velocity, flow loss, and the volume fractions of oxygen and soo
 \ct{DUCT VOLUME FRACTION}                      & Volume fraction of a species in a duct      &  mol/mol           & D,H   \\ \hline
 \ct{FAN PRESSURE}                              & Pressure output of a fan in a duct          &  Pa                & D   \\ \hline
 \ct{FILTER LOADING}                            & Loading of a species in a filter            &  kg                & D   \\ \hline
-\ct{FILTER LOSS}                               & Flow loss through a filter                  &                    & D   \\ \hline
+\ct{FILTER LOSS}                               & Total filter flow loss coefficient          &                    & D   \\ \hline
 \ct{NODE DENSITY}                              & Density of the flow through a node          &  kg/m$^3$          & D,H   \\ \hline
 \ct{NODE ENTHALPY}                             & Enthalpy of a node                          &  kJ/kg             & D,H   \\ \hline
 \ct{NODE SENSIBLE ENTHALPY}                    & Sensible Enthalpy of a node                 &  kJ/kg             & D,H   \\ \hline
@@ -11962,7 +11976,7 @@ properties be specified as well. Simply prescribing as many properties as possib
 
 % ignore namelist/keyword combinations
 % ignorenamelistkw: /BNDF/DEBUG
-% ignorenamelistkw: /COMB/CVODE_ORDER, /COMB/FUEL_ID_FOR_AFT, /COMB/USE_MIXED_ZN_AFT_TMP
+% ignorenamelistkw: /COMB/FUEL_ID_FOR_AFT, /COMB/USE_MIXED_ZN_AFT_TMP
 % ignorenamelistkw: /DEVC/ELEM_ID, /DEVC/STATISTICS
 % ignorenamelistkw: /DUMP/MMS_TIMER, /DUMP/TURB_INIT_CLOCK, /DUMP/GET_CUTCELLS_VERBOSE, /DUMP/WRITE_CVODE_SUBSTEPS
 % ignorenamelistkw: /HVAC/DEBUG
@@ -12104,6 +12118,7 @@ Keyword             & Type     & Description                      & Units       
 \endhead
 \ct{CHECK_REALIZABILITY}                         & Logical    & Section~\ref{info:chem_integration}          &           & \ct{F}              \\ \hline
 \ct{COMPUTE_ADIABATIC_FLAME_TEMPERATURE}         & Logical    & Section~\ref{info:extinction}                &           & \ct{F}              \\ \hline
+\ct{CVODE_ORDER}                                 & Integer    & Section~\ref{info:chem_integration}          &           & 0                   \\ \hline
 \ct{DO_CHEM_LOAD_BALANCE}                        & Logical    & Section~\ref{info:chem_integration}          &           & \ct{F}              \\ \hline
 \ct{EQUIV_RATIO_CHECK}                           & Logical    & Section~\ref{info:chem_integration}          &           & \ct{T}              \\ \hline
 \ct{EXTINCTION_MODEL}                            & Character  & Section~\ref{info:extinction}                &           &                     \\ \hline
@@ -13735,6 +13750,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{RGB(3)}                                              & Integer Array   & Section~\ref{info:colors}                 &                     & \small 255,204,102      \\ \hline
 \ct{ROUGHNESS}                                           & Real            & Section~\ref{info:WALL_MODEL}             & m                   & 0.                      \\ \hline
 \ct{SHAPE_FACTOR}                                       & Real            & Section~\ref{info:boundary_fuel_model}    &                     & 0.25                    \\ \hline
+\ct{SKIP_INRAD}                                         & Logical         & Section~\ref{info:net_and_convective_heat_flux} &               & \ct{F}                  \\ \hline
 \ct{SPEC_ID}                                            & Character       & Section~\ref{info:MASS_FLUX}              &                     &                         \\ \hline
 \ct{SPREAD_RATE}                                        & Real            & Section~\ref{info:spread}                 & m/s                 &                         \\ \hline
 \ct{STRETCH_FACTOR(:)}                                  & Real Array      & Section~\ref{info:solid_phase_stability}  &                     & 2.                      \\ \hline
@@ -14254,9 +14270,9 @@ Keyword             & Type     & Description                      & Units       
 357  \> \ct{SURF ... has a specified HRRPUA/MLRPUA and a pyrolysis model.} \> Section~\ref{info:gas_burner}  \\
 359  \> \ct{SURF ... cannot have a specified velocity or volume flux.} \> Section~\ref{info:gas_burner}  \\
 360  \> \ct{SURF ... uses HRRPUA and species ... is the FUEL for ...} \> Section~\ref{info:gas_burner}  \\
-361  \> \ct{SURF ... uses HRRPUA and MASS_FRACTION but no REAC ...} \> Section~\ref{info:simple_chemistry}  \\
+361  \> \ct{SURF ... uses HRRPUA and MASS_FRACTION but no REAC ...} \> Section~\ref{info:gas_burner}  \\
 362  \> \ct{SURF ... uses MLRPUA and species ... is the FUEL for ...} \> Section~\ref{info:gas_burner}  \\
-363  \> \ct{SURF ... uses MLRPUA and MASS_FRACTION but no REAC ...} \> Section~\ref{info:simple_chemistry}  \\
+363  \> \ct{SURF ... uses MLRPUA and MASS_FRACTION but no REAC ...} \> Section~\ref{info:gas_burner}  \\
 364  \> \ct{SURF ... cannot specify mass fraction with mass flux ...} \> Section~\ref{info:MASS_FLUX}  \\
 365  \> \ct{SURF ... cannot specify mass fraction and outflow velocity.} \> Section~\ref{info:MASS_FLUX}  \\
 366  \> \ct{SURF ... cannot leak and specify flow or pyrolysis ...} \> Section~\ref{info:Leaks}  \\
@@ -14424,8 +14440,8 @@ Keyword             & Type     & Description                      & Units       
 610 \> \ct{HOLE ... Cannot overlap HOLEs with a DEVC or CTRL_ID.} \> Section~\ref{info:HOLE}  \\
 611 \> \ct{OBST ... has a BULK_DENSITY but zero volume.} \> Section~\ref{info:BURN_AWAY}  \\
 612 \> \ct{OBST ... must have a volume to be assigned HT3D.} \> Section~\ref{checkerboard}  \\
-614 \> \ct{OBST_ID ... cannot have a SURF with NODE_ID} \> Section~\ref{info:hvac_geom}  \\    
-615 \> \ct{OBST ... cannot overlap OBST ...}            \> Section~\ref{info:OVERLAY}  \\    
+614 \> \ct{OBST_ID ... cannot have a SURF with NODE_ID} \> Section~\ref{info:hvac_geom}  \\
+615 \> \ct{OBST ... cannot overlap OBST ...}            \> Section~\ref{info:OVERLAY}  \\
     \>                                                  \>                          \\
 701 \> \ct{problem with GEOM, local SURF_ID index ... out of bounds.} \> Section~\ref{info:GEOM_Basics}  \\
 702 \> \ct{problem with GEOM, SURF_IDS not defined properly.} \> Section~\ref{info:first_geom}  \\
@@ -15307,7 +15323,7 @@ File extension  & Short Description   & Reference    \\ \hline \hline
 %\backmatter
 \nopart %To Fix TOC in PDF output.
 
-\bibliography{../Bibliography/FDS_refs,../Bibliography/FDS_general,../Bibliography/FDS_mathcomp}
+\printbibliography[heading=bibintoc,title={References}]
 
 
 \appendix
