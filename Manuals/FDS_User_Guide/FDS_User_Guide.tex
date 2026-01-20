@@ -18,9 +18,12 @@
 {\input{../Bibliography/gitrevision}}
 {\newcommand{\gitrevision}{unknown}}
 
+\addbibresource{../Bibliography/FDS_refs.bib}
+\addbibresource{../Bibliography/FDS_general.bib}
+\addbibresource{../Bibliography/FDS_mathcomp.bib}
+
 \begin{document}
 
-\bibliographystyle{unsrt}
 \pagestyle{empty}
 
 
@@ -572,8 +575,8 @@ The second way to assess MPI efficiency is known as ``strong scaling.'' Here, yo
 \ee
 In the strong study demonstrated here, a single mesh of dimension 180 by 160 by 120 is divided into a range of smaller meshes, with the smallest partitioning being 432 meshes of dimension 20 by 20 by 20. The resulting decrease in the CPU time of the entire calculation and the major subroutines is shown in the right hand plot of Fig.~\ref{fig:scaling_tests}. Ideally, the CPU time should be inversely proportional to the number of meshes (MPI processes); that is, the relative CPU times ought to follow the black dotted lines. The one notable exception to this rule is for ``COMM'' or COMMunications. This curve represents the time spent in communicating information across the network.
 \begin{figure}[!ht]
-\includegraphics[width=3.2in]{SCRIPT_FIGURES/weak_scaling_test}
-\includegraphics[width=3.2in]{SCRIPT_FIGURES/strong_scaling_test}
+\includegraphics[height=2.2in]{SCRIPT_FIGURES/weak_scaling_test}
+\includegraphics[height=2.2in]{SCRIPT_FIGURES/strong_scaling_test}
 \caption[MPI scaling study]{Example of a weak (left) and strong (right) scaling study.}
 \label{fig:scaling_tests}
 \end{figure}
@@ -2291,11 +2294,6 @@ The impinging jet model is an extension of the user-specified $h$ that allows yo
 &SURF ID='WALL', HEAT_TRANSFER_MODEL='IMPINGING JET', XYZ=0,0,1, HEAT_TRANSFER_COEFFICIENT=50, HEAT_TRANSFER_COEFFICIENT_SIGMA=0.5 /
 \end{lstlisting}
 
-\subsubsection{Specifying the Heat Flux at a Solid Surface}
-\label{info:net_and_convective_heat_flux}
-
-Instead of altering the convective heat transfer coefficient, a fixed heat flux may be specified directly.  Two methods are available to do this.  The first is to specify a \ct{NET_HEAT_FLUX} in units of \unit{kW/m^2}.  When this is specified FDS will compute the surface temperature required to ensure that the combined radiative and convective heat flux from the surface is equal to the \ct{NET_HEAT_FLUX}. The second method is to specify the \ct{CONVECTIVE_HEAT_FLUX}, in units of \unit{kW/m^2}. The radiative flux is then determined based on the \ct{EMISSIVITY} on the \ct{SURF} line and the wall temperature needed to get the desired \ct{CONVECTIVE_HEAT_FLUX}. Setting the \ct{EMISSIVITY} to zero will result in there being only a convective heat flux from a surface.  If \ct{NET_HEAT_FLUX} or \ct{CONVECTIVE_HEAT_FLUX} is positive, the wall heats up the surrounding gases. If \ct{NET_HEAT_FLUX} or \ct{CONVECTIVE_HEAT_FLUX} is negative, the wall cools the surrounding gases. You cannot specify \ct{TMP_FRONT} with \ct{NET_HEAT_FLUX} since \ct{NET_HEAT_FLUX} combines radiative and convective flux, and FDS must compute the wall temperature to get the desired flux. Specifying \ct{TMP_FRONT} and \ct{CONVECTIVE_HEAT_FLUX} will result in FDS using the gas temperature adjacent to a wall cell to set the convection heat transfer coefficient to achieve the desired \ct{CONVECTIVE_HEAT_FLUX} for that wall cell. If a droplet lands surface with a specified heat flux, no heat transfer will be predicted between the droplet and the surface. This is because the high heat transfer rates associated with droplets can lead to nonsensical wall temperatures when trying to enforce the specific flux which are then likely to result in runtime errors or numerical instabilities.
-
 \subsubsection{Logarithmic Law of the Wall}
 
 Near-wall treatments, such as wall models or wall functions, aim to mimic the sudden change from molecular to turbulent transport close to the walls using algebraic formulations without the need of resolving the otherwise computationally expensive region of the near-wall flow-field. The main theory follows dimensional analysis based on the idea that shear at the wall is constant. Accordingly, the non-dimensional velocity $u^+$ is calculated using a wall function \cite{FDS_Tech_Guide}.
@@ -2314,6 +2312,14 @@ If a surface is emitting (``blowing'') or removing (``sucking'') gas, the flow n
       h_{\rm blowing} = \underbrace{\left[\frac{\Phi_h}{{\exp}(\Phi_h)-1}\right]}_{{\mbox{\scriptsize \tt BLOWING CORRECTION}}} h \quad ; \quad \Phi_h = \frac{\dot{m}'' c_p}{h}
 \end{equation}
 where $h$ is the unadjusted heat transfer coefficient, $\dot{m}''$ is the mass flow rate per unit area (positive for blowing), and $c_p$ is the specific heat of the gas.,
+
+
+\subsubsection{Specifying the Heat Flux at a Solid Surface}
+\label{info:net_and_convective_heat_flux}
+
+Instead of altering the convective heat transfer coefficient, a fixed heat flux may be specified directly.  Two methods are available to do this.  The first is to specify a \ct{NET_HEAT_FLUX} in units of \unit{kW/m^2}.  When this is specified FDS will compute the surface temperature required to ensure that the combined radiative and convective heat flux from the surface is equal to the \ct{NET_HEAT_FLUX}. The second method is to specify the \ct{CONVECTIVE_HEAT_FLUX}, in units of \unit{kW/m^2}. The radiative flux is then determined based on the \ct{EMISSIVITY} on the \ct{SURF} line and the wall temperature needed to get the desired \ct{CONVECTIVE_HEAT_FLUX}. Setting the \ct{EMISSIVITY} to zero will result in there being only a convective heat flux from a surface.  If \ct{NET_HEAT_FLUX} or \ct{CONVECTIVE_HEAT_FLUX} is positive, the wall heats up the surrounding gases. If \ct{NET_HEAT_FLUX} or \ct{CONVECTIVE_HEAT_FLUX} is negative, the wall cools the surrounding gases. You cannot specify \ct{TMP_FRONT} with \ct{NET_HEAT_FLUX} since \ct{NET_HEAT_FLUX} combines radiative and convective flux, and FDS must compute the wall temperature to get the desired flux. Specifying \ct{TMP_FRONT} and \ct{CONVECTIVE_HEAT_FLUX} will result in FDS using the gas temperature adjacent to a wall cell to set the convection heat transfer coefficient to achieve the desired \ct{CONVECTIVE_HEAT_FLUX} for that wall cell. If a droplet lands surface with a specified heat flux, no heat transfer will be predicted between the droplet and the surface. This is because the high heat transfer rates associated with droplets can lead to nonsensical wall temperatures when trying to enforce the specific flux which are then likely to result in runtime errors or numerical instabilities.
+
+The \ct{SURF} parameters \ct{NET_HEAT_FLUX} and \ct{CONVECTIVE_HEAT_FLUX} will not work with a \ct{MATL_ID}.  When 1D heat conduction into the solid is considered, you can specify an \ct{EXTERNAL_FLUX} as discussed in Sec.~\ref{info:simulating_the_cone_calorimeter}, which \emph{supplements} the net surface heat flux.  But in certain situations (usually for verification tests), you may want to directly control the incident radiative heat flux to the surface.  To do this, you can use \ct{EXTERNAL_FLUX} and add \ct{SKIP_INRAD=T} on the \ct{SURF} line.  The incoming radiation to the surface is then \emph{replaced} by the specified \ct{EXTERNAL_FLUX}.
 
 \subsection{Adiabatic Surfaces}
 \label{info:adiabatic}
@@ -3302,9 +3308,8 @@ Note that the 3-D heat conduction equation is solved via 1-D segments in all thr
 \paragraph{Case 11} (\ct{box_burn_away11}) The ``box'' in this case consists of 0.4~m by 0.4~m by 1~cm plates forming a collection of 10~cm cubical compartments. There are 15 plates in all, each with a density of 20~kg/m$^3$. The total mass is 0.48~kg.
 
 \begin{figure}[!ht]
-\begin{tabular*}{\textwidth}{lr}
-\includegraphics[width=3.0in]{SCRIPT_FIGURES/box_burn_away11} &
-\end{tabular*}
+\centering
+\includegraphics[width=3.0in]{SCRIPT_FIGURES/box_burn_away11}
 \caption[Results of the \ct{box_burn_away11} test case]{Output of \ct{box_burn_away11} test case.}
 \label{box_burn_away_11}
 \end{figure}
@@ -3335,6 +3340,7 @@ Delamination (fall-off) of material layers can occur e.g. in glued materials, su
 The \ct{SURF} and \ct{MATL} lines describing the pyrolysis of real materials consist of a combination of empirical and fundamental properties, often originating from different sources. How do you know that the various property values and the associated thermo-physical model in FDS constitute an appropriate description of the solid? For a full-scale simulation, it is hard to untangle the uncertainties associated with the gas and solid phase routines. However, you can perform a simple check of any set of solid phase model by essentially turning off the gas phase.  In the following sections, guidance is provided on how to perform a quick simulation of the cone calorimeter and bench-scale measurements like thermal gravimetric analysis (TGA), differential scanning calorimetry (DSC), and micro-combustion calorimetry (MCC).
 
 \subsection{Simulating the Cone Calorimeter}
+\label{info:simulating_the_cone_calorimeter}
 
 This section describes how to set up a simple model of the cone calorimeter or similar apparatus. This is not a full 3-D simulation of the apparatus, but rather a 1-D simulation of the solid phase degradation under an imposed external heat flux. While a full 3-D simulation of the cone heater and sample holder can be created in FDS, such a simulation would take some time to complete and would not disentangle issues with the solid phase model from uncertainties in the gas phase. It is worthwhile to perform a quick simulation like the one described here to test the solid phase model only.
 \begin{enumerate}
@@ -8910,47 +8916,48 @@ In this example, a fire spreads radially from a single point as directed by the 
 \label{info:external_control}
 \label{external_control}
 
-It is possible to externally control some aspects of an FDS simulation while the simulation is running. Any FDS input that has either a \ct{RAMP_ID} (except for the output time ramps on \ct{DUMP} such as \ct{RAMP_BNDF}) or a \ct{CTRL_ID} as one of its inputs can be externally controlled. A \ct{RAMP} can be externally controlled by setting \ct{EXTERNAL_FILE} on \ct{RAMP}. A \ct{CTRL} can be externally controlled by setting \ct{FUNCTION_TYPE='EXTERNAL'}.
+It is possible to externally control some aspects of an FDS simulation while the simulation is running. These include most \ct{RAMP}s and the logical state of any \ct{CTRL}. The logical state of a \ct{CTRL} can be externally controlled by setting \ct{FUNCTION_TYPE='EXTERNAL'} on the \ct{CTRL} input. A \ct{RAMP} can be externally controlled by setting \ct{EXTERNAL_FILE} on \ct{RAMP}. \ct{RAMP}s used during initialization only cannot be externally controlled. These include \ct{RAMP}s controlling time (such as the output time \ct{RAMP}s on \ct{DUMP} like \ct{RAMP_BNDF}), defining \ct{SPEC} or \ct{MATL} physical properties (such as \ct{CONDUCTIVITY_RAMP} on \ct{MATL}), defining particle distributions (such as \ct{CNF_RAMP} on \ct{PART}), defining atmospheric conditions (such as \ct{RAMP_T0_Z} on \ct{WIND}), or for defining the initial surface temperature {\ct{RAMP_T_I} on \ct{SURF}) cannot be externally controlled.
 
-When external control is selected, FDS will set the value of the \ct{RAMP} or the logical state of the \ct{CTRL} based on values contained in a csv file whose name is given by \ct{EXTERNAL_FILENAME} on \ct{MISC}. This file will be checked for new values every \ct{DT_EXTERNAL} on \ct{TIME} seconds. Only those inputs whose values are being changed need to specified. For inputs not specified or if the file does not exist or cannot be opened (e.g., locked by the operating system during a file write), the current values will be kept. The initial values are defined with either \ct{INITIAL_VALUE} on \ct{RAMP} or \ct{INITIAL_STATE} on \ct{CTRL}. FDS can be forced to wait if no file is present or use an alternate \ct{EXTERNAL_FILENAME} by specifying \ct{DT_EXTERNAL_HEARTBEAT} and \ct{EXTERNAL_HEARTBEAT_FILENAME} on \ct{TIME}. With this approach FDS looks for \ct{EXTERNAL_HEARTBEAT_FILENAME}. If the file is not found FDS will wait up to \ct{DT_EXTERNAL_HEARTBEAT} seconds. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is still not present, FDS will stop trying to update the external controls.  If \ct{HEARTBEAT_FAIL} on \ct{TIME} is true, FDS will stop the simulation. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is present, FDS will read \ct{EXTERNAL_FILENAME} from it. If your external program requires that output files it reads be current, set \ct{DT_FLUSH} to be less than the \ct{DT} values for any file types being used by the external program.
+	Any FDS input that has either a \ct{RAMP_ID} (except for the output time ramps on \ct{DUMP} such as \ct{RAMP_BNDF}) or a \ct{CTRL_ID} as one of its inputs can be externally controlled. A \ct{RAMP} can be externally controlled by setting \ct{EXTERNAL_FILE} on \ct{RAMP}. A \ct{CTRL} can be externally controlled by setting \ct{FUNCTION_TYPE='EXTERNAL'}.
 
-The csv file format is:
-\begin{lstlisting}
-      Type(1), ID(1), Value(1)
-      Type(2), ID(2), Value(2)
-      .
-      .
-\end{lstlisting}
-where \ct{Type} is either \ct{RAMP} or \ct{CTRL}, \ct{ID} is the corresponding \ct{ID} in the FDS input files, and \ct{Value} is the new output value for a \ct{RAMP} or the new logical state for a \ct{CTRL} where positive values mean the \ct{CTRL} evaluates as \ct{TRUE} and negative values mean the function evaluates as \ct{FALSE}.
+	When external control is selected, FDS will set the value of the \ct{RAMP} or the logical state of the \ct{CTRL} based on values contained in a csv file whose name is given by \ct{EXTERNAL_FILENAME} on \ct{MISC}. This file will be checked for new values every \ct{DT_EXTERNAL} on \ct{TIME} seconds. Only those inputs whose values are being changed need to specified. For inputs not specified or if the file does not exist or cannot be opened (e.g., locked by the operating system during a file write), the current values will be kept. The initial values are defined with either \ct{INITIAL_VALUE} on \ct{RAMP} or \ct{INITIAL_STATE} on \ct{CTRL}. FDS can be forced to wait if no file is present or use an alternate \ct{EXTERNAL_FILENAME} by specifying \ct{DT_EXTERNAL_HEARTBEAT} and \ct{EXTERNAL_HEARTBEAT_FILENAME} on \ct{TIME}. With this approach FDS looks for \ct{EXTERNAL_HEARTBEAT_FILENAME}. If the file is not found FDS will wait up to \ct{DT_EXTERNAL_HEARTBEAT} seconds. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is still not present, FDS will stop trying to update the external controls.  If \ct{HEARTBEAT_FAIL} on \ct{TIME} is true, FDS will stop the simulation. If \ct{EXTERNAL_HEARTBEAT_FILENAME} is present, FDS will read \ct{EXTERNAL_FILENAME} from it. If your external program requires that output files it reads be current, set \ct{DT_FLUSH} to be less than the \ct{DT} values for any file types being used by the external program.
 
-An example set of inputs is below:
-\begin{lstlisting}
-&MISC EXTERNAL_FILENAME='external_test_input.csv'/
-&TIME T_END=10,DT_EXTERNAL=5/
+	The csv file format is:
+	\begin{lstlisting}
+		Type(1), ID(1), Value(1)
+		Type(2), ID(2), Value(2)
+		.
+		.
+	\end{lstlisting}
+	where \ct{Type} is either \ct{RAMP} or \ct{CTRL}, \ct{ID} is the corresponding \ct{ID} in the FDS input files, and \ct{Value} is the new output value for a \ct{RAMP} or the new logical state for a \ct{CTRL} where positive values mean the \ct{CTRL} evaluates as \ct{TRUE} and negative values mean the function evaluates as \ct{FALSE}.
 
-&OBST XB=0.0,0.1,0,1,0,1/
-&VENT XB=0.1,0.1,0,1,0,1,SURF_ID='FLOW',CTRL_ID='VENT CTRL'/
-&SURF ID='FLOW',VEL=-1,COLOR='BLUE',TAU_V=0/
-&CTRL ID='VENT CTRL',FUNCTION_TYPE='EXTERNAL',INITIAL_STATE=T/
+	An example set of inputs is below:
+	\begin{lstlisting}
+		&MISC EXTERNAL_FILENAME='external_test_input.csv'/
+		&TIME T_END=10,DT_EXTERNAL=5/
 
-&VENT XB=2,2,0,1,0,1,SURF_ID='HOT'/
-&SURF ID='HOT',TMP_FRONT=1000,RAMP_T='T RAMP',COLOR='RED'/
-&RAMP ID='T RAMP',EXTERNAL_FILE=T,INITIAL_VALUE=0.081633/
-\end{lstlisting}
-In these inputs a vent with a fixed velocity is externally controlled by a \ct{CTRL} that is initially \ct{TRUE}, and a vent with a fixed temperature is externally controlled with a \ct{RAMP} with an initial ramp value that results in a temperature of 100~$^\circ$C. These vents are applied to two faces of a 1 m$^3$ box. At 5~s, the csv file is read with contents of:
-\begin{lstlisting}
-RAMP,"T RAMP"   , 1
-CTRL,"VENT CTRL",-1
-\end{lstlisting}
-This turns off the velocity vent (a negative \ct{CTRL} value means set the state to \ct{.FALSE.}) and sets the fixed temperature vent to 1000~$^\circ$C (a \ct{RAMP} value of 1 means apply the full value of \ct{TMP_FRONT}). Note that the \ct{ID} strings are enclosed in quotes. This is only required if the string has a space or comma in it.  Results of running the case are shown in Fig.~\ref{external_control_fig}
+		&OBST XB=0.0,0.1,0,1,0,1/
+		&VENT XB=0.1,0.1,0,1,0,1,SURF_ID='FLOW',CTRL_ID='VENT CTRL'/
+		&SURF ID='FLOW',VEL=-1,COLOR='BLUE',TAU_V=0/
+		&CTRL ID='VENT CTRL',FUNCTION_TYPE='EXTERNAL',INITIAL_STATE=T/
 
-\begin{figure}[ht]
-      \includegraphics[width=3in]{SCRIPT_FIGURES/external_test_temperature}
-      \includegraphics[width=3in]{SCRIPT_FIGURES/external_test_velocity}
-      \caption[Results of the \ct{external_test} test case]{(Left) Surface temperature. (Right) Wall velocity.}
-      \label{external_control_fig}
-\end{figure}
+		&VENT XB=2,2,0,1,0,1,SURF_ID='HOT'/
+		&SURF ID='HOT',TMP_FRONT=1000,RAMP_T='T RAMP',COLOR='RED'/
+		&RAMP ID='T RAMP',EXTERNAL_FILE=T,INITIAL_VALUE=0.081633/
+	\end{lstlisting}
+	In these inputs a vent with a fixed velocity is externally controlled by a \ct{CTRL} that is initially \ct{TRUE}, and a vent with a fixed temperature is externally controlled with a \ct{RAMP} with an initial ramp value that results in a temperature of 100~$^\circ$C. These vents are applied to two faces of a 1 m$^3$ box. At 5~s, the csv file is read with contents of:
+	\begin{lstlisting}
+		RAMP,"T RAMP"   , 1
+		CTRL,"VENT CTRL",-1
+	\end{lstlisting}
+	This turns off the velocity vent (a negative \ct{CTRL} value means set the state to \ct{.FALSE.}) and sets the fixed temperature vent to 1000~$^\circ$C (a \ct{RAMP} value of 1 means apply the full value of \ct{TMP_FRONT}). Note that the \ct{ID} strings are enclosed in quotes. This is only required if the string has a space or comma in it.  Results of running the case are shown in Fig.~\ref{external_control_fig}
 
+	\begin{figure}[ht]
+		\includegraphics[width=3in]{SCRIPT_FIGURES/external_test_temperature}
+		\includegraphics[width=3in]{SCRIPT_FIGURES/external_test_velocity}
+		\caption[Results of the \ct{external_test} test case]{(Left) Surface temperature. (Right) Wall velocity.}
+		\label{external_control_fig}
+	\end{figure}
 
 \chapter{Numerical Considerations}
 \label{info:MISC}
@@ -9462,8 +9469,8 @@ ULMAT             & \checkmark  & \checkmark    & \checkmark & \checkmark & iter
 ULMAT HYPRE$^6$   & \checkmark  & \checkmark    & \checkmark & \checkmark & iterative & exact      & iterative \\
 GLMAT             & $\times$    & $\times$      & \checkmark & \checkmark & exact     & iterative  & iterative \\
 \rowcolor{lavender}
-UGLMAT            & $\times$    & $\times$      & \checkmark & \checkmark & exact     & exact      & iterative \\
-UGLMAT HYPRE$^7$  & $\times$    & $\times$      & \checkmark & \checkmark & exact     & exact      & iterative \\
+UGLMAT            & \checkmark$^7$  & \checkmark    & \checkmark & \checkmark & exact     & exact      & iterative \\
+UGLMAT HYPRE$^{6,8}$  & \checkmark$^7$  & \checkmark    & \checkmark & \checkmark & exact     & exact      & iterative \\
 % PFFT$^8$ (future) & $\times$    & 1 direction   & \checkmark & \checkmark & exact     & iterative  & iterative \\
 \bottomrule
 \end{tabular}
@@ -9476,9 +9483,10 @@ UGLMAT HYPRE$^7$  & $\times$    & $\times$      & \checkmark & \checkmark & exac
         \item[$^3$] ``Velocity @ Mesh'' refers to errors in the normal component of velocity at mesh boundaries, so-called ``interpolated'' boundaries in FDS.  For inexact solvers, this error may be controlled using the parameter \ct{VELOCITY_TOLERANCE}.  Mass conservation errors are proportional to the velocity tolerance.  Solvers listed as ``exact'' are \emph{global} solvers.  ``Global'' refers to a global matrix solution, one matrix for the whole domain, as opposed to one matrix per mesh.  Thus, there are no mesh boundary errors for this type of solver.
         \item[$^4$] ``Velocity @ Solid'' refers to errors in the normal component of velocity at solid boundaries, so-called ``penetration'' errors that are present in \emph{immersed boundary methods} and lead to mass conservation errors.  These errors are particularly important to control for tightly sealed pressure zones. For inexact solvers, this error may be controlled using the parameter \ct{VELOCITY_TOLERANCE}. Mass conservation errors are proportional to the velocity tolerance.  Solvers listed as ``exact'' are \emph{unstructured} solvers.  ``Unstructured'' means the solid boundaries (e.g., \ct{OBST} boundaries) are treated as domain boundaries for the pressure Poisson equation.  Unstructured solvers are the opposite of \emph{immersed boundary methods}.
         \item[$^5$] ``Inseparability'' refers to handling the error compared to the solution of the \emph{inseparable} Poisson equation incurred by lagging the pressure in the baroclinic term.  This error may be controlled using the parameter \ct{PRESSURE_TOLERANCE}.
-        \item[$^6$] ULMAT HYPRE uses the HYPRE library developed at Lawrence Livermore National Laboratories (LLNL).  Use this variant of ULMAT if the Intel MKL library is not available \emph{or} if MKL runs out of memory or is too slow due to memory issues with large mesh blocks.  Our implementation of HYPRE uses an algebraic multi-grid (AMG) preconditioned conjugate gradient (PCG) method, which does not require excessive amounts of memory.
-        \item[$^7$] Use this variant of UGLMAT for cases where the total number of cells is greater than 1 million.
-        % \item[$^8$] PFFT stands for Parallel Fast Fourier Transform.  This solver is only possible for block structured domains.  The domain decomposition for the pressure solver differs from the transport solver.  It uses pencil-shaped domains that span each direction and thus perform FFT solves in each direction for the whole domain.  Data is transferred in each stage of the solution to the orthogonal directions.  This solver is \emph{global} but \emph{structured}.  So, mesh to mesh errors are eliminated but immersed boundary errors are not.
+        \item[$^6$] ULMAT and UGLMAT HYPRE use the HYPRE library developed at Lawrence Livermore National Laboratories (LLNL).  Use this variant if the Intel MKL library is not available \emph{or} if MKL runs out of memory or is too slow due to memory issues with large mesh blocks.  Our implementation of HYPRE uses an algebraic multi-grid (AMG) preconditioned conjugate gradient (PCG) method, which does not require excessive amounts of memory.
+        \item[$^7$] Refinement works for cases with Cartesian geometry (\ct{OBST}) only.
+        \item[$^8$] Use this variant of UGLMAT for cases where the total number of cells is greater than 1 million.
+        % \item[$^9$] PFFT stands for Parallel Fast Fourier Transform.  This solver is only possible for block structured domains.  The domain decomposition for the pressure solver differs from the transport solver.  It uses pencil-shaped domains that span each direction and thus perform FFT solves in each direction for the whole domain.  Data is transferred in each stage of the solution to the orthogonal directions.  This solver is \emph{global} but \emph{structured}.  So, mesh to mesh errors are eliminated but immersed boundary errors are not.
     \end{itemize}
 \end{tablenotes}
 \end{threeparttable}
@@ -11935,7 +11943,7 @@ would output the velocity, flow loss, and the volume fractions of oxygen and soo
 \ct{DUCT VOLUME FRACTION}                      & Volume fraction of a species in a duct      &  mol/mol           & D,H   \\ \hline
 \ct{FAN PRESSURE}                              & Pressure output of a fan in a duct          &  Pa                & D   \\ \hline
 \ct{FILTER LOADING}                            & Loading of a species in a filter            &  kg                & D   \\ \hline
-\ct{FILTER LOSS}                               & Flow loss through a filter                  &                    & D   \\ \hline
+\ct{FILTER LOSS}                               & Total filter flow loss coefficient          &                    & D   \\ \hline
 \ct{NODE DENSITY}                              & Density of the flow through a node          &  kg/m$^3$          & D,H   \\ \hline
 \ct{NODE ENTHALPY}                             & Enthalpy of a node                          &  kJ/kg             & D,H   \\ \hline
 \ct{NODE SENSIBLE ENTHALPY}                    & Sensible Enthalpy of a node                 &  kJ/kg             & D,H   \\ \hline
@@ -13742,6 +13750,7 @@ Keyword             & Type     & Description                      & Units       
 \ct{RGB(3)}                                              & Integer Array   & Section~\ref{info:colors}                 &                     & \small 255,204,102      \\ \hline
 \ct{ROUGHNESS}                                           & Real            & Section~\ref{info:WALL_MODEL}             & m                   & 0.                      \\ \hline
 \ct{SHAPE_FACTOR}                                       & Real            & Section~\ref{info:boundary_fuel_model}    &                     & 0.25                    \\ \hline
+\ct{SKIP_INRAD}                                         & Logical         & Section~\ref{info:net_and_convective_heat_flux} &               & \ct{F}                  \\ \hline
 \ct{SPEC_ID}                                            & Character       & Section~\ref{info:MASS_FLUX}              &                     &                         \\ \hline
 \ct{SPREAD_RATE}                                        & Real            & Section~\ref{info:spread}                 & m/s                 &                         \\ \hline
 \ct{STRETCH_FACTOR(:)}                                  & Real Array      & Section~\ref{info:solid_phase_stability}  &                     & 2.                      \\ \hline
@@ -15314,7 +15323,7 @@ File extension  & Short Description   & Reference    \\ \hline \hline
 %\backmatter
 \nopart %To Fix TOC in PDF output.
 
-\bibliography{../Bibliography/FDS_refs,../Bibliography/FDS_general,../Bibliography/FDS_mathcomp}
+\printbibliography[heading=bibintoc,title={References}]
 
 
 \appendix
