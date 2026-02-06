@@ -434,6 +434,9 @@ INTEGER :: N_SPECIES=0                                              !< Number of
 INTEGER :: N_REACTIONS                                              !< Number of gas phase reactions
 INTEGER :: I_WATER=-1                                               !< Index of the 'WATER VAPOR' tracked species
 INTEGER :: N_TRACKED_SPECIES=0                                      !< Number of lumped or tracked (computed) gas species
+INTEGER :: N_TRACKED_ELEMENTS=0                                     !< Number of elements in tracked species
+INTEGER, PARAMETER :: MAX_ELEMENTS = 118                            !< Maximum number of elements available in periodic table
+INTEGER :: TRACKED_ELEM_INDX(MAX_ELEMENTS)                          !< Hold the element index (from PROPERTY_DATA::ELEMENTS)
 INTEGER :: N_SURFACE_DENSITY_SPECIES=0
 INTEGER :: COMBUSTION_ODE_SOLVER=-1                                 !< Indicator of ODE solver
 INTEGER :: EXTINCT_MOD=-1                                           !< Indicator of extinction model
@@ -915,6 +918,7 @@ INTEGER  :: MAX_CVODE_SUBSTEPS=100000
 INTEGER  :: CVODE_MAX_TRY=4
 INTEGER  :: CVODE_ORDER=0
 REAL(EB) :: HEAT_LOSS_FACTOR=0.0_EB
+REAL(EB) :: RAD_LOSS_FACTOR=0.0_EB
 INTEGER  :: CVODE_ERR_CODE_MIN=-100
 INTEGER  :: CVODE_ERR_CODE_MAX=100
 INTEGER  :: CVODE_WARNING_CELLS(-100:100)! Index of the array is error code and value is Cell count

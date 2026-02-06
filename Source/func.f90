@@ -1670,6 +1670,19 @@ MW_OUT =  1._EB/DOT_PRODUCT(MWR_Z,Z_IN)
 
 END SUBROUTINE GET_MOLECULAR_WEIGHT
 
+!> \brief Determine molecular weight of the gas mixture
+!> \param X_IN Array of lumped species mole fractions
+!> \param MW_OUT Average molecular weight (g/mol)
+
+SUBROUTINE GET_MOLECULAR_WEIGHT_FROM_MOLE_FRACTIONS(X_IN,MW_OUT)
+
+REAL(EB), INTENT(IN)  :: X_IN(1:N_TRACKED_SPECIES)
+REAL(EB), INTENT(OUT) :: MW_OUT
+
+MW_OUT =  DOT_PRODUCT(MWR_Z,X_IN)
+
+END SUBROUTINE GET_MOLECULAR_WEIGHT_FROM_MOLE_FRACTIONS
+
 
 !> \brief Compute R/W for a gas mixture
 !> \param Z_IN Array of lumped species mass fractions
@@ -1741,6 +1754,43 @@ CP_OUT_2  = DOT_PRODUCT(CP_Z(ITMP+1,1:N_TRACKED_SPECIES),Z_IN)
 DCPDT = (CP_OUT_2-CP_OUT_1)
 
 END SUBROUTINE GET_SPECIFIC_HEAT_TMP_DERIVATIVE
+
+!> \brief Get gibbs energy of the gas mixture at a specified temperature and pressure
+!> \param X_IN Array of mole fraction
+!> \param G_OUT Gibbs energy of the mixture (J/kmol) at standard pressure.
+!> \param TMPG Gas mixture temperature (K)
+!> \param PRES Gas mixture pressure (Pa)
+SUBROUTINE GET_GIBBS_ENERGY_INTERP(X_IN,G_OUT,TMPG, PRES)
+
+INTEGER :: ITMP
+REAL(EB), INTENT(IN) :: TMPG,PRES
+REAL(EB) :: X_IN(1:N_TRACKED_SPECIES) ! Mole fraction
+REAL(EB), INTENT(OUT) :: G_OUT ! J/kmol
+
+ITMP = MIN(I_MAX_TEMP-1,INT(TMPG))
+G_OUT = DOT_PRODUCT(G_F_Z(ITMP,1:N_TRACKED_SPECIES),X_IN)+(TMPG-REAL(ITMP,EB))* &
+          DOT_PRODUCT(G_F_Z(ITMP+1,1:N_TRACKED_SPECIES)-G_F_Z(ITMP,1:N_TRACKED_SPECIES),X_IN) ! kJ/mol
+G_OUT = G_OUT*1.0E6_EB + R0*TMPG*log(PRES/P_STP) ! j/kmol      
+
+END SUBROUTINE GET_GIBBS_ENERGY_INTERP
+
+!> \brief Get gibbs energy of the gas mixture at a specified temperature and pressure
+!> \param N Species index
+!> \param G_OUT Gibbs energy of the mixture (J/kmol) at standard pressure.
+!> \param TMPG Gas mixture temperature (K)
+!> \param PRES Gas mixture pressure (Pa)
+SUBROUTINE GET_GIBBS_ENERGY_Z_INTERP(N,G_OUT,TMPG, PRES)
+
+INTEGER :: ITMP
+REAL(EB), INTENT(IN) :: TMPG,PRES
+INTEGER :: N !Species index
+REAL(EB), INTENT(OUT) :: G_OUT ! J/kmol
+
+ITMP = MIN(I_MAX_TEMP-1,INT(TMPG))
+G_OUT  = G_F_Z(ITMP,N) + (TMPG-REAL(ITMP,EB))*(G_F_Z(ITMP+1,N)-G_F_Z(ITMP,N))
+G_OUT = G_OUT*1.0E6_EB + R0*TMPG*LOG(PRES/P_STP) ! j/kmol    
+
+END SUBROUTINE GET_GIBBS_ENERGY_Z_INTERP
 
 !> \brief Get sensible enthalpy of the gas mixture at a specified temperature
 !> \param Z_IN Array of lumped species mass fractions
@@ -1915,7 +1965,6 @@ ENDIF
 
 END SUBROUTINE GET_ENTHALPY
 
-
 SUBROUTINE GET_ENTHALPY_Z(N,TMPG,H_OUT)
 
 INTEGER :: ITMP
@@ -2010,6 +2059,44 @@ SUBROUTINE MOLAR_CONC_TO_MASS_FRAC(CC_IN,ZZ_OUT)
       ZZ_OUT = 0._EB
    ENDIF
 END SUBROUTINE MOLAR_CONC_TO_MASS_FRAC
+
+SUBROUTINE MASS_FRAC_TO_MOLE_FRAC(ZZ_IN,XX_OUT)
+   REAL(EB), INTENT(IN) :: ZZ_IN(1:N_TRACKED_SPECIES)
+   REAL(EB), INTENT(OUT):: XX_OUT(1:N_TRACKED_SPECIES)
+   REAL(EB) :: MWI(N_TRACKED_SPECIES)
+   REAL(EB) :: DENOM
+   INTEGER  :: NS
+
+   DO NS = 1, N_TRACKED_SPECIES
+      MWI(NS) = SPECIES_MIXTURE(NS)%MW  ! in kg/kmol
+   ENDDO
+   DENOM = 0.0_EB
+   DO NS = 1, N_TRACKED_SPECIES
+      DENOM = DENOM + ZZ_IN(NS) / MWI(NS)
+   ENDDO
+   DO NS = 1, N_TRACKED_SPECIES
+       XX_OUT(NS) = (ZZ_IN(NS) / MWI(NS)) / DENOM
+   ENDDO
+END SUBROUTINE MASS_FRAC_TO_MOLE_FRAC
+
+SUBROUTINE MOLE_FRAC_TO_MASS_FRAC(XX_IN, ZZ_OUT)
+   REAL(EB), INTENT(IN)  :: XX_IN(1:N_TRACKED_SPECIES)   
+   REAL(EB), INTENT(OUT) :: ZZ_OUT(1:N_TRACKED_SPECIES)  
+   REAL(EB) :: MWI(N_TRACKED_SPECIES)                    
+   REAL(EB) :: DENOM
+   INTEGER :: NS
+
+   DO NS = 1, N_TRACKED_SPECIES
+      MWI(NS) = SPECIES_MIXTURE(NS)%MW  ! [kg/kmol]
+   ENDDO
+   DENOM = 0.0_EB
+   DO NS = 1, N_TRACKED_SPECIES
+      DENOM = DENOM + XX_IN(NS) * MWI(NS)
+   ENDDO
+   DO NS = 1, N_TRACKED_SPECIES
+      ZZ_OUT(NS) = (XX_IN(NS) * MWI(NS)) / DENOM
+   ENDDO
+END SUBROUTINE MOLE_FRAC_TO_MASS_FRAC
 
 SUBROUTINE CALC_EQUIV_RATIO (ZZ, EQUIV)
 REAL(EB), INTENT(IN) :: ZZ(N_TRACKED_SPECIES)

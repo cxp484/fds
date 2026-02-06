@@ -14,6 +14,7 @@ USE PRECISION_PARAMETERS
 USE GLOBAL_CONSTANTS   
 USE TYPES
 USE CHEMCONS
+USE PROPERTY_DATA
 USE, INTRINSIC :: ISO_C_BINDING
 USE FSUNDIALS_CORE_MOD
 
@@ -102,7 +103,7 @@ REAL(EB) :: R_F,MIN_SPEC(N_TRACKED_SPECIES), KG,  TMP, RHO, &
 INTEGER :: I,NS, ITMP
 REAL(EB) :: ZZ(N_TRACKED_SPECIES), CP, HS_I, DG, TMPI
 REAL(EB) :: ZETA, MIXING_FACTOR, VOL_CHANGE_TERM, SUM_OMEGA_DOT, SUM_CC, MW0, MW, SUM_H_ZZ0, EXPONENT, &
-            CONC, LOSS_FACTOR
+            CONC, LOSS_FACTOR, RAD_LOSS
 TYPE(REACTION_TYPE), POINTER :: RN
 
 TMP = MAX(CVEC(N_TRACKED_SPECIES+1), MIN_CHEM_TMP)
@@ -112,6 +113,7 @@ RRTMP = 1._EB/(R0*TMP)
 ZETA = USER_DATA%ZETA0*EXP(-TN/USER_DATA%TAU_MIX)
 MIXING_FACTOR = 0._EB
 LOSS_FACTOR = 1.0_EB - HEAT_LOSS_FACTOR
+RAD_LOSS = RAD_LOSS_FACTOR*SIGMA*TMP**4
 IF (ZETA < 1._EB) MIXING_FACTOR = ZETA/(1-ZETA)/USER_DATA%TAU_MIX
 
 CALL GET_MOLECULAR_WEIGHT(USER_DATA%ZZ_0,MW0)
@@ -200,7 +202,7 @@ DO NS=1,N_TRACKED_SPECIES
    FVEC(N_TRACKED_SPECIES+1)= FVEC(N_TRACKED_SPECIES+1) + HS_I*FVEC(NS)   
 ENDDO
 ! The first term is due to chemistry production rate and the second term is due to mixing.
-FVEC(N_TRACKED_SPECIES+1)=-(FVEC(N_TRACKED_SPECIES+1)*LOSS_FACTOR &
+FVEC(N_TRACKED_SPECIES+1)=-(FVEC(N_TRACKED_SPECIES+1)*LOSS_FACTOR + RAD_LOSS &
                             + (RHO*(SUM_H_ZZ0-USER_DATA%H_IN))*MIXING_FACTOR)/RHO/CP
 
 ! SO FAR FVEC(1:N_TRACKED_SPECIES) CONTAINS CHEMISTRY PRODUCTION RATE TERM (OMEGA_DOT). 
@@ -354,7 +356,7 @@ REAL(EB) :: ZZ(N_TRACKED_SPECIES), CP_I(N_TRACKED_SPECIES), HS_I(N_TRACKED_SPECI
 REAL(EB) :: DKCDTBYKC, DBIDC(N_TRACKED_SPECIES), DBIDT, CP, DCPDT, DKINFDTMPBYKINF, DTMPDT, DG, TMPI, RHOI, CPI
 REAL(EB) :: ZETA, MIXING_FACTOR, SUM_OMEGA_DOT, SUM_CC, SUM_OMEGA_DOT_BY_CC, SUM_CC_I, ENRG_TERM, DUMMY1, DUMMY2, DUMMY3
 REAL(EB) :: VOL_CHANGE_TERM1, VOL_CHANGE_TERM2, VOL_CHANGE_TERM3, VOL_CHANGE_TERM, SUM_DOMEGA_DOT_BY_DT, MW0, MW, &
-            SUM_CP_ZZ0,SUM_H_ZZ0, EXPONENT, CONC, CONC_EXP, DRIDC, DRIDT, LOSS_FACTOR
+            SUM_CP_ZZ0,SUM_H_ZZ0, EXPONENT, CONC, CONC_EXP, DRIDC, DRIDT, LOSS_FACTOR,RAD_LOSS
 INTEGER :: I,NS, NS1, NS2, ITMP
 TYPE(REACTION_TYPE), POINTER :: RN
 
@@ -365,6 +367,7 @@ RRTMP = 1._EB/(R0*TMP)
 ZETA = USER_DATA%ZETA0*EXP(-TN/USER_DATA%TAU_MIX)
 MIXING_FACTOR = 0._EB
 LOSS_FACTOR = 1.0_EB - HEAT_LOSS_FACTOR
+RAD_LOSS = RAD_LOSS_FACTOR*SIGMA*TMP**4
 IF (ZETA < 1._EB) MIXING_FACTOR = ZETA/(1-ZETA)/USER_DATA%TAU_MIX
 
 CALL GET_MOLECULAR_WEIGHT(USER_DATA%ZZ_0,MW0)
@@ -528,6 +531,7 @@ REACTION_LOOP: DO I=1,N_REACTIONS
 ENDDO REACTION_LOOP
 
 ! CALCULATE DTDOT/D[X]
+SUM_CC = SUM(CVEC(1:N_TRACKED_SPECIES))
 DTMPDT = FVEC(N_TRACKED_SPECIES+1)
 CALL GET_SPECIFIC_HEAT_INTERP(ZZ(1:N_TRACKED_SPECIES),CP,TMP)
 CPI = 1._EB/CP
@@ -548,8 +552,9 @@ DO NS=1,N_TRACKED_SPECIES
       JMAT(NS, N_TRACKED_SPECIES+1) = JMAT(NS, N_TRACKED_SPECIES+1)  + &
          HS_I(NS2)*JMAT(NS,NS2)
    ENDDO
-   JMAT(NS, N_TRACKED_SPECIES+1) = JMAT(NS, N_TRACKED_SPECIES+1)  + CP_I(NS)*DTMPDT
-   JMAT(NS, N_TRACKED_SPECIES+1) = - JMAT(NS, N_TRACKED_SPECIES+1) / RHO/CP*LOSS_FACTOR  
+   JMAT(NS, N_TRACKED_SPECIES+1) = (-JMAT(NS, N_TRACKED_SPECIES+1)  + CP_I(NS)*DTMPDT)*LOSS_FACTOR 
+   JMAT(NS, N_TRACKED_SPECIES+1) = JMAT(NS, N_TRACKED_SPECIES+1)  + (-CP_I(NS)/RHO/CP+4.0_EB/SUM_CC)*RAD_LOSS
+   JMAT(NS, N_TRACKED_SPECIES+1) = JMAT(NS, N_TRACKED_SPECIES+1) / RHO/CP 
 ENDDO
       
 ! CALCULATE DTDOT/DT
@@ -562,6 +567,8 @@ JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1) = JMAT(N_TRACKED_SPECIES+1, N_TRA
 JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1) = -JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1)/RHO/CP
 JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1) = JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1) + DTMPDT*TMPI
 JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1) = JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1)*LOSS_FACTOR  
+JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1) = JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1)+ &
+                (-5.0_EB/TMP+DCPDT/CP)*RAD_LOSS/RHO/CP
 
 ! NOW ADD TERMS FOR MIXING AND VOLUME CHANGE
 !--------------------------------------------
@@ -572,7 +579,6 @@ JMAT(N_TRACKED_SPECIES+1, N_TRACKED_SPECIES+1) = JMAT(N_TRACKED_SPECIES+1, N_TRA
 
 ! NOW CALCULATE THE VOLUME CHANGE TERM
 SUM_OMEGA_DOT = SUM(FVEC(1:N_TRACKED_SPECIES))
-SUM_CC = SUM(CVEC(1:N_TRACKED_SPECIES))
 SUM_DOMEGA_DOT_BY_DT = SUM(JMAT(N_TRACKED_SPECIES+1,1:N_TRACKED_SPECIES))
 VOL_CHANGE_TERM1 = 0._EB
 VOL_CHANGE_TERM2 = 0._EB
@@ -1237,6 +1243,1308 @@ RETURN
 END SUBROUTINE CVODESTATS
 
 END MODULE CVODE_INTERFACE
+
+!-------------------------------------------------------------------------
+!-------------------------------------------------------------------------
+!***** Chemical Euilibrium calculation routines ******
+!-------------------------------------------------------------------------
+!-------------------------------------------------------------------------
+
+MODULE CHEM_EQUIL
+
+USE PRECISION_PARAMETERS
+USE GLOBAL_CONSTANTS   
+USE TYPES
+USE CHEMCONS
+USE PROPERTY_DATA
+USE, INTRINSIC :: ISO_C_BINDING
+USE FSUNDIALS_CORE_MOD
+
+IMPLICIT NONE
+
+TYPE :: EQUILIBRIUM_OPTION
+   INTEGER  :: OPTION                 ! 1-HP, 2-UV
+
+   REAL(EB) :: FIXED_ENTH             ! J/KMOL
+   REAL(EB) :: FIXED_PRES             ! PA
+   REAL(EB) :: FIXED_INT_ENG          ! J/KMOL
+   REAL(EB) :: FIXED_RHO              ! KG/M3
+
+   REAL(EB) :: REL_ELEM_TOL   = 1.0E-8_EB    ! RELATIVE TOLERANCE
+   REAL(EB) :: ABS_ELEM_TOL   = 1.0E-70_EB   ! ABSOLUTE TOL IN ELEMENT NUMBER
+   INTEGER  :: MAX_ITERATIONS = 1000         ! MAXIMUM NUMBER OF ITERATIONS
+   INTEGER  :: ELEM_SKIP = -1                ! ELEMENT TO SKIP because of SUM OF TARGET ELEMENT FRACTION =1
+END TYPE EQUILIBRIUM_OPTION
+
+LOGICAL :: DEBUG=.FALSE.
+
+PUBLIC EQUILIBRATE
+
+CONTAINS
+
+
+!> \brief equilibrium routine
+!> \param ZZ species mass fraction array
+!> \param TMP_IN is the temperature
+!> \param PRES_IN is the pressure
+!> \param Option HP (default)-const enthalpy and pressure, UV-Constant volume and internal energy process.
+SUBROUTINE EQUILIBRATE(ZZ, TMP_IN, PRES_IN, TMP_OUT, PRES_OUT,OPTION)
+   USE PHYSICAL_FUNCTIONS, ONLY :GET_MOLECULAR_WEIGHT, MASS_FRAC_TO_MOLE_FRAC, GET_ENTHALPY,MOLE_FRAC_TO_MASS_FRAC
+
+   REAL(EB), INTENT(INOUT) :: ZZ(N_TRACKED_SPECIES)
+   REAL(EB), INTENT(IN) :: TMP_IN,PRES_IN
+   REAL(EB), INTENT(OUT) :: TMP_OUT,PRES_OUT
+   INTEGER, INTENT(IN) ::OPTION
+   INTEGER  :: NE, NS, ELEM_INDX, MAX_NE_INDEX
+   REAL(EB) :: TARGET_ELEM_MOL_FR(N_TRACKED_ELEMENTS), LAMBDA_RT(N_TRACKED_ELEMENTS+1)
+   REAL(EB) :: XX(N_TRACKED_SPECIES)
+   REAL(EB) :: MW, SUM_MOL_FR,TMP, PRES, MAX_ELEM_FRAC
+
+   TYPE(EQUILIBRIUM_OPTION) :: EQ_OPTION
+
+   ! Calculate the mole fraction of species
+   CALL MASS_FRAC_TO_MOLE_FRAC(ZZ, XX)
+   
+   ! Calculate element mole fraction (also target element mole fraction at equilibrium)
+   TARGET_ELEM_MOL_FR = 0.0_EB
+   SUM_MOL_FR =0._EB
+   DO NE=1,N_TRACKED_ELEMENTS
+      ELEM_INDX=TRACKED_ELEM_INDX(NE)
+      DO NS=1,N_TRACKED_SPECIES
+         IF (SPECIES_MIXTURE(NS)%ATOMS(ELEM_INDX) > 0) THEN ! ELEMENT PRESENT IN THE MOLECULE SYMBOL
+            TARGET_ELEM_MOL_FR(NE) = TARGET_ELEM_MOL_FR(NE) + SPECIES_MIXTURE(NS)%ATOMS(ELEM_INDX)*XX(NS)
+         ENDIF
+      ENDDO 
+      SUM_MOL_FR = SUM_MOL_FR +TARGET_ELEM_MOL_FR(NE)  
+   ENDDO
+
+   MAX_ELEM_FRAC=-1000._EB
+   DO NE=1,N_TRACKED_ELEMENTS
+      TARGET_ELEM_MOL_FR(NE) = TARGET_ELEM_MOL_FR(NE)/SUM_MOL_FR
+      IF (TARGET_ELEM_MOL_FR(NE) > MAX_ELEM_FRAC) THEN
+         MAX_NE_INDEX = NE
+         MAX_ELEM_FRAC = TARGET_ELEM_MOL_FR(NE)
+      ENDIF
+   ENDDO
+
+   ! Store the fixed values of equilibrium calculation. Currently HP and UV is used. 
+   ! If needed other options will be used in the future.
+   EQ_OPTION%ELEM_SKIP=MAX_NE_INDEX
+   CALL GET_MOLECULAR_WEIGHT(ZZ,MW)
+   IF (OPTION .EQ. 1) THEN ! FIXED HP
+      EQ_OPTION%OPTION=1
+      CALL GET_ENTHALPY(ZZ,EQ_OPTION%FIXED_ENTH,TMP_IN) ! J/kg
+      EQ_OPTION%FIXED_PRES = PRES_IN
+   ELSE ! FIXED UV
+      EQ_OPTION%OPTION=2
+      EQ_OPTION%FIXED_RHO = PRES_IN*MW/R0/TMP_IN ! [PR]= Pa, [MW] = kg/kmol, [R0]= J/K/kmol, [TMP]=K, [RHO]= kg/m3
+      CALL GET_ENTHALPY(ZZ,EQ_OPTION%FIXED_ENTH,TMP_IN)
+      EQ_OPTION%FIXED_INT_ENG = EQ_OPTION%FIXED_ENTH - R0*TMP_IN/MW ! J/kg
+   ENDIF
+
+   ! Calculate an approximate solution based on Stoichiometric matrix
+   TMP = TMP_IN 
+   PRES = PRES_IN
+   CALL SET_APPROXIMATE_INITIAL_MOLES_SOLUTION(XX,TMP,PRES,TMP_OUT,PRES_OUT,EQ_OPTION)
+
+   ! get an estimate element potentials (important to get an good initial lambda_rt).  
+   ! To get a even better estimate of element potentials we can use Brinkley solution. Need to check if it is needed.
+   CALL GET_ELEMENT_POTENTIAL(XX,TMP_OUT,PRES_OUT,TARGET_ELEM_MOL_FR,LAMBDA_RT(1:N_TRACKED_ELEMENTS))
+
+   ! Iterate to solve equlibrium based on fixed values (core of element potential)
+   CALL SOLVE_EQUILIBRIUM(XX,TMP_OUT, PRES_OUT,TARGET_ELEM_MOL_FR,LAMBDA_RT,EQ_OPTION)
+
+
+   WRITE(LU_ERR,*) "End EQUILIBRATE: TMP_OUT,PRES_OUT=",TMP_OUT,PRES_OUT
+   CALL MOLE_FRAC_TO_MASS_FRAC(XX,ZZ)
+   DO NS = 1, N_TRACKED_SPECIES
+      IF (ZZ(NS) >1.e-4_EB) WRITE(LU_ERR,'(A,A20, F15.6)') "End EQUILIBRATE: ID,ZZ=",SPECIES_MIXTURE(NS)%ID,ZZ(NS)
+   ENDDO
+   
+END SUBROUTINE EQUILIBRATE
+
+SUBROUTINE SOLVE_EQUILIBRIUM(XX,TMP,PRES,TARGET_ELEM_MOL_FR,LAMBDA_RT,EQ_OPTION)
+   USE MATH_FUNCTIONS, ONLY : LINEAR_SYSTEM_SOLVE
+   !------------------------------------------------------------
+   ! ARGUMENTS
+   !------------------------------------------------------------
+   REAL(EB), INTENT(INOUT) :: XX(N_TRACKED_SPECIES)                 ! SPECIES MOLE FRACTIONS
+   REAL(EB), INTENT(INOUT) :: TMP                                   ! TEMPERATURE
+   REAL(EB), INTENT(INOUT) :: PRES                                  ! PRESSURE
+   REAL(EB), INTENT(IN)    :: TARGET_ELEM_MOL_FR(N_TRACKED_ELEMENTS)! TARGET ELEMENT MOLES
+   REAL(EB), INTENT(INOUT) :: LAMBDA_RT(N_TRACKED_ELEMENTS+1)       ! ELEMENT POTENTIALS (+1 for log(T))
+   TYPE(EQUILIBRIUM_OPTION), INTENT(IN) :: EQ_OPTION                ! OPTIONS FOR EQUILIBRATION
+
+   !------------------------------------------------------------
+   ! LOCAL VARIABLES
+   !------------------------------------------------------------
+   INTEGER :: NE, ITER, NVAR, FAIL, IERR
+   REAL(EB) :: F, OLD_F, DELTAX, DELTAY, FCTR, TOL_VAL,MIN_ALLOWED_TMP,MAX_ALLOWED_TMP
+   LOGICAL :: PASS_THIS
+   REAL(EB), PARAMETER:: ELEM_FRAC_CUTOFF=1.E-100_EB
+
+   ! STATIC ARRAYS
+   REAL(EB) :: RES_TRIAL(N_TRACKED_ELEMENTS+1),RES_TRIAL_NEW(N_TRACKED_ELEMENTS+1)
+   REAL(EB) :: JAC(N_TRACKED_ELEMENTS+1, N_TRACKED_ELEMENTS+1)
+   REAL(EB) :: ABOVE(N_TRACKED_ELEMENTS+1)
+   REAL(EB) :: BELOW(N_TRACKED_ELEMENTS+1)
+   REAL(EB) :: OLDX(N_TRACKED_ELEMENTS+1)
+   REAL(EB) :: GRAD(N_TRACKED_ELEMENTS+1)
+
+   REAL(EB) :: FIXED_1ST_VAL,FIXED_2ND_VAL,XVAL,YVAL, NEW_VAL
+   CHARACTER(MESSAGE_LENGTH) :: MESSAGE
+
+
+   NVAR = N_TRACKED_ELEMENTS + 1
+   GRAD = 0.0_EB
+   OLDX = 0.0_EB
+   RES_TRIAL = 0.0_EB
+   FAIL = 0
+
+   ! INSTALL LOG(TEMPERATURE) INTO LAST SLOT
+   LAMBDA_RT(N_TRACKED_ELEMENTS+1) = LOG(TMP)
+
+   ! SET BOUNDS FOR ELEMENTS
+   DO NE = 1, N_TRACKED_ELEMENTS
+     ABOVE(NE) = 200.0_EB
+     BELOW(NE) = -2000.0_EB
+     IF (TARGET_ELEM_MOL_FR(NE) < ELEM_FRAC_CUTOFF) THEN
+         LAMBDA_RT(NE) = -1000.0_EB
+     END IF
+   END DO
+
+   ! TEMPERATURE BOUNDS
+   MIN_ALLOWED_TMP=300.0_EB
+   MAX_ALLOWED_TMP=5000.0_EB !REAL(I_MAX_TEMP)
+   ABOVE(N_TRACKED_ELEMENTS+1) = LOG(MAX_ALLOWED_TMP + 25.0_EB)
+   BELOW(N_TRACKED_ELEMENTS+1) = LOG(MIN_ALLOWED_TMP - 25.0_EB)
+
+   CALL GET_FIRST_FIXED_VAL(EQ_OPTION,FIXED_1ST_VAL)
+   CALL GET_SECOND_FIXED_VAL(EQ_OPTION,FIXED_2ND_VAL)
+
+   !------------------------------------------------------------
+   ! NEWTON-RAPHSON ITERATION
+   !------------------------------------------------------------
+   DO ITER = 1, EQ_OPTION%MAX_ITERATIONS
+
+      ! CALCULATE RESIDUAL
+      CALL EQUIL_RESIDUAL(XX, TMP, PRES, LAMBDA_RT, TARGET_ELEM_MOL_FR, RES_TRIAL, EQ_OPTION)
+      F = 0.5_EB * DOT_PRODUCT(RES_TRIAL, RES_TRIAL)
+
+      ! CHECK EXTRA CONSTRAINTS
+      CALL GET_FIRST_VAR_VAL(XX,TMP,PRES,EQ_OPTION,XVAL)
+      CALL GET_SECOND_VAR_VAL(XX,TMP,PRES,EQ_OPTION,YVAL)
+      DELTAX = (XVAL - FIXED_1ST_VAL)/FIXED_1ST_VAL
+      DELTAY = (YVAL - FIXED_2ND_VAL)/FIXED_2ND_VAL
+
+      ! CHECK ELEMENT CONVERGENCE
+      PASS_THIS = .TRUE.
+      DO NE = 1, N_TRACKED_ELEMENTS
+         TOL_VAL = TARGET_ELEM_MOL_FR(NE)*EQ_OPTION%REL_ELEM_TOL + EQ_OPTION%ABS_ELEM_TOL
+         IF (ABS(RES_TRIAL(NE)) > TOL_VAL) PASS_THIS = .FALSE.
+      END DO
+
+      ! CHECK OVERALL CONVERGENCE
+      IF (ITER > 1 .AND. PASS_THIS .AND. ABS(DELTAX) < EQ_OPTION%REL_ELEM_TOL .AND. &
+         ABS(DELTAY) < EQ_OPTION%REL_ELEM_TOL) THEN
+         EXIT
+      END IF
+
+      ! CALCULATE JACOBIAN
+      CALL EQUIL_JACOBIAN(XX, TMP, PRES, LAMBDA_RT, TARGET_ELEM_MOL_FR, JAC, EQ_OPTION)
+
+      ! SAVE OLD VALUES
+      OLDX = LAMBDA_RT
+      OLD_F = F
+
+      ! NEGATE RESIDUALS FOR SOLVER
+      RES_TRIAL = -RES_TRIAL
+
+      ! SOLVE LINEAR SYSTEM: JAC * STEP = -RES_TRIAL
+      CALL LINEAR_SYSTEM_SOLVE(NVAR,NVAR,JAC, RES_TRIAL,RES_TRIAL_NEW,IERR)
+      IF(IERR >0) THEN
+         WRITE(MESSAGE,'(A,A,A)') 'Singular matrix to solve element residuals.'
+         IF (MY_RANK==0) WRITE(LU_ERR,'(A)') TRIM(MESSAGE)
+         RETURN
+      ENDIF
+
+      ! BOUNDS AND DAMPING
+      FCTR = 1.0_EB
+      DO NE = 1, NVAR
+         NEW_VAL = LAMBDA_RT(NE)+RES_TRIAL_NEW(NE)
+         IF (NEW_VAL > ABOVE(NE)) THEN
+            FCTR = MIN(FCTR, 0.8_EB*(ABOVE(NE)-LAMBDA_RT(NE))/(NEW_VAL-LAMBDA_RT(NE)))
+         ELSEIF (NEW_VAL < BELOW(NE)) THEN
+            ! Check if this index belongs to an element potential
+            IF (NE <= N_TRACKED_ELEMENTS .AND. NE .NE. EQ_OPTION%ELEM_SKIP) THEN
+               RES_TRIAL_NEW(NE) = -50.0_EB
+               IF (LAMBDA_RT(NE) < (BELOW(NE) + 50.0_EB)) THEN
+                  RES_TRIAL_NEW(NE) = BELOW(NE) - LAMBDA_RT(NE)
+               END IF
+
+            ELSE
+              ! For non-element variables (like T or P), scale the step factor
+              FCTR = MIN(FCTR, 0.8_EB * (LAMBDA_RT(NE) - BELOW(NE)) / (LAMBDA_RT(NE)-NEW_VAL))
+            ENDIF
+         ENDIF   
+
+         IF (NE == NVAR .AND. ABS(RES_TRIAL_NEW(NE)) > 0.2) THEN 
+             FCTR = MIN(FCTR, 0.2/ABS(RES_TRIAL_NEW(NE)))
+         ENDIF
+      END DO
+
+      RES_TRIAL = RES_TRIAL_NEW * FCTR
+
+      ! DAMPING STEP
+      IF (.NOT. DAMPSTEP(OLDX, RES_TRIAL, LAMBDA_RT)) THEN
+         FAIL = FAIL + 1
+         IF (FAIL > 3) THEN
+             PRINT *, "Cannot find acceptable Newton damping factor"
+             EXIT
+         END IF
+      ELSE
+         FAIL = 0
+      END IF
+
+   END DO
+
+   WRITE(LU_ERR,*)"Number of iterations required=",ITER
+
+END SUBROUTINE SOLVE_EQUILIBRIUM
+
+
+LOGICAL FUNCTION DAMPSTEP(OLDX, STEP, X)
+   REAL(EB), INTENT(IN)    :: OLDX(N_TRACKED_ELEMENTS+1)
+   REAL(EB), INTENT(IN)    :: STEP(N_TRACKED_ELEMENTS+1)
+   REAL(EB), INTENT(INOUT) :: X(N_TRACKED_ELEMENTS+1)
+
+   INTEGER  :: NE
+   REAL(EB) :: DAMP
+
+   DAMP = 1.0_EB
+   DAMPSTEP = .TRUE.
+
+   !------------------------------------------------------------
+   ! DELTA DAMPING ON ELEMENT POTENTIALS
+   !------------------------------------------------------------
+   DO NE = 1, N_TRACKED_ELEMENTS
+         IF (STEP(NE) >  0.75_EB) DAMP = MIN(DAMP,  0.75_EB / STEP(NE))
+         IF (STEP(NE) < -0.75_EB) DAMP = MIN(DAMP, -0.75_EB / STEP(NE))
+   END DO
+
+   !------------------------------------------------------------
+   ! UPDATE SOLUTION VECTOR
+   !------------------------------------------------------------
+   X = OLDX + DAMP * STEP
+
+   !------------------------------------------------------------
+   ! LOGGING
+   !------------------------------------------------------------
+   IF (DEBUG) THEN
+     WRITE(LU_ERR,'(A,ES12.5)') 'SOLUTION UNKNOWNS: DAMP = ', DAMP
+     WRITE(LU_ERR,'(A)') '            X_NEW        X_OLD        STEP'
+     DO NE = 1, N_TRACKED_ELEMENTS
+         WRITE(LU_ERR,'(3ES14.5)') X(NE), OLDX(NE), STEP(NE)
+     END DO
+   END IF
+
+END FUNCTION DAMPSTEP
+
+
+
+SUBROUTINE EQUIL_RESIDUAL(XX, TMP, PRES, LAMBDA_RT, TARGET_ELEM_MOL_FR, RESIDUAL, EQ_OPTION)
+
+    !------------------------------------------------------------
+    ! ARGUMENTS
+    !------------------------------------------------------------
+    REAL(EB), INTENT(INOUT)  :: XX(N_TRACKED_SPECIES)                      ! MOLE FRACTIONS (NS)
+    REAL(EB), INTENT(INOUT)  :: TMP                                        ! TEMPERATURE
+    REAL(EB), INTENT(INOUT)  :: PRES                                       ! PRESSURE
+    REAL(EB), INTENT(IN)  :: LAMBDA_RT(N_TRACKED_ELEMENTS+1)            ! ELEMENT POTENTIALS (NE)
+    REAL(EB), INTENT(IN)  :: TARGET_ELEM_MOL_FR(N_TRACKED_ELEMENTS)     ! ELEMENT MOLE FRACTIONS
+    REAL(EB), INTENT(OUT) :: RESIDUAL(N_TRACKED_ELEMENTS+1)             ! ELEMENTS, FIXED VAR1, FIXED VAR2
+    TYPE(EQUILIBRIUM_OPTION), INTENT(IN) :: EQ_OPTION
+
+    !------------------------------------------------------------
+    ! LOCALS
+    !------------------------------------------------------------
+    INTEGER :: NE, NS,ELEM_INDX
+    REAL(EB) :: XVAL, YVAL
+    REAL(EB) :: XX_VAL, YY_VAL,SUM_MOL_FR
+    REAL(EB) :: CURRENT_ELEM_MOL_FR(N_TRACKED_ELEMENTS)
+    REAL(EB), PARAMETER :: ELEM_FRAC_CUTOFF =1.E-100_EB
+
+    !------------------------------------------------------------
+    ! GET CONSTRAINT VALUES
+    !------------------------------------------------------------
+    CALL GET_FIRST_FIXED_VAL(EQ_OPTION,XVAL)
+    CALL GET_SECOND_FIXED_VAL(EQ_OPTION,YVAL)
+
+    !------------------------------------------------------------
+    ! SET EQUILIBRIUM STATE (THERMO FROM XX, T, P)
+    !------------------------------------------------------------
+    !CALL SET_EQUIL_STATE(XX, EXP(LAMBDA_RT(N_TRACKED_ELEMENTS)), PRES, LAMBDA_RT)
+    TMP = EXP(LAMBDA_RT(N_TRACKED_ELEMENTS+1))
+    CALL SET_EQUIL_STATE(XX, TMP, PRES, LAMBDA_RT)
+
+   ! Calculate element mole fraction
+   CURRENT_ELEM_MOL_FR = 0.0_EB
+   SUM_MOL_FR = 0._EB
+   DO NE=1,N_TRACKED_ELEMENTS
+      ELEM_INDX=TRACKED_ELEM_INDX(NE)
+      DO NS=1,N_TRACKED_SPECIES
+         IF (SPECIES_MIXTURE(NS)%ATOMS(ELEM_INDX) > 0) THEN ! ELEMENT PRESENT IN THE MOLECULE SYMBOL
+            CURRENT_ELEM_MOL_FR(NE) = CURRENT_ELEM_MOL_FR(NE) + SPECIES_MIXTURE(NS)%ATOMS(ELEM_INDX)*XX(NS)
+         ENDIF
+      ENDDO 
+      SUM_MOL_FR = SUM_MOL_FR +CURRENT_ELEM_MOL_FR(NE)  
+   ENDDO
+
+   DO NE=1,N_TRACKED_ELEMENTS
+      CURRENT_ELEM_MOL_FR(NE) = CURRENT_ELEM_MOL_FR(NE)/SUM_MOL_FR
+   ENDDO
+
+
+   !------------------------------------------------------------
+   ! ELEMENT RESIDUALS (LOOP OVER ELEMENTS)
+   !------------------------------------------------------------
+   DO NE = 1, N_TRACKED_ELEMENTS
+     IF (TARGET_ELEM_MOL_FR(NE) < ELEM_FRAC_CUTOFF) THEN
+         RESIDUAL(NE) = LAMBDA_RT(NE) + 1000.0_EB
+     ELSEIF (NE > N_TRACKED_ELEMENTS) THEN
+         RESIDUAL(NE) = LAMBDA_RT(NE)
+     ELSE
+         ! SMALL-NUMBER PROTECTION (L'HÔPITAL)
+         IF (TARGET_ELEM_MOL_FR(NE)  < 1.0E-10_EB .OR. &
+             CURRENT_ELEM_MOL_FR(NE) < 1.0E-10_EB ) THEN
+             RESIDUAL(NE) = TARGET_ELEM_MOL_FR(NE) - CURRENT_ELEM_MOL_FR(NE)
+         ELSE
+             RESIDUAL(NE) = LOG( (1.0_EB + TARGET_ELEM_MOL_FR(NE)) / &
+                                      (1.0_EB + CURRENT_ELEM_MOL_FR(NE)) )
+         ENDIF
+     ENDIF
+
+   ENDDO
+
+   !------------------------------------------------------------
+   ! EXTRA CONSTRAINTS
+   !------------------------------------------------------------
+   CALL GET_FIRST_VAR_VAL(XX,TMP,PRES,EQ_OPTION,XX_VAL) 
+   CALL GET_SECOND_VAR_VAL(XX,TMP,PRES,EQ_OPTION,YY_VAL)
+
+   RESIDUAL(N_TRACKED_ELEMENTS+1) = XX_VAL / XVAL - 1.0_EB
+   RESIDUAL(EQ_OPTION%ELEM_SKIP) = YY_VAL / YVAL - 1.0_EB
+
+END SUBROUTINE EQUIL_RESIDUAL
+
+SUBROUTINE SET_EQUIL_STATE(XX,TMP,PRES,LAMBDA_RT)
+   USE PHYSICAL_FUNCTIONS, ONLY : GET_GIBBS_ENERGY_Z_INTERP
+
+   REAL(EB), INTENT(INOUT) :: XX(N_TRACKED_SPECIES)         ! MOLE FRACTIONS (optional)
+   REAL(EB), INTENT(INOUT) :: TMP,PRES                      ! TEMPERATURE,PRESSURE
+   REAL(EB), INTENT(IN)    :: LAMBDA_RT(N_TRACKED_ELEMENTS) ! ELEMENT POTENTIALS
+
+   INTEGER  :: NS, NE
+   REAL(EB) :: MU_RT(N_TRACKED_SPECIES),GRT(N_TRACKED_SPECIES),PARTIAL_PRES(N_TRACKED_SPECIES)
+   REAL(EB) :: DUMMY,DUMMY2,PRES_OLD
+
+
+   MU_RT = 0.0_EB
+   DO NS = 1, N_TRACKED_SPECIES
+     DO NE = 1, N_TRACKED_ELEMENTS
+         MU_RT(NS) = MU_RT(NS) + LAMBDA_RT(NE) * &
+               SPECIES_MIXTURE(NS)%ATOMS(TRACKED_ELEM_INDX(NE))
+     END DO
+   END DO
+
+   DO NS = 1, N_TRACKED_SPECIES
+      CALL GET_GIBBS_ENERGY_Z_INTERP(NS,GRT(NS),TMP,P_STP)
+      GRT(NS)=GRT(NS)/R0/TMP
+   ENDDO   
+
+   !------------------------------------------------------------
+   ! COMPUTE SPECIES PARTIAL PRESSURES
+   !------------------------------------------------------------
+   PRES_OLD = PRES
+   PRES = 0.0_EB
+   DO NS = 1, N_TRACKED_SPECIES
+      DUMMY = -GRT(NS) + MU_RT(NS)
+      IF (DUMMY < -600.0_EB) THEN
+         PARTIAL_PRES(NS) = 0.0_EB
+      ELSEIF (DUMMY > 300.0_EB) THEN
+         DUMMY2 = DUMMY / 300.0_EB
+         DUMMY2 = DUMMY2*DUMMY2
+         PARTIAL_PRES(NS) = P_STP * EXP(300.0_EB) * DUMMY2
+      ELSE
+         PARTIAL_PRES(NS) = P_STP * EXP(DUMMY)
+      ENDIF
+      PRES = PRES + PARTIAL_PRES(NS)
+   END DO
+
+   
+   !------------------------------------------------------------
+   ! SET MOLE FRACTIONS
+   !------------------------------------------------------------
+   IF (PRES > 0.0_EB) THEN
+      DO NS = 1, N_TRACKED_SPECIES
+         XX(NS) = PARTIAL_PRES(NS) / PRES
+      ENDDO
+   ELSE 
+      XX = 0.0_EB
+   ENDIF 
+
+END SUBROUTINE SET_EQUIL_STATE
+
+
+SUBROUTINE EQUIL_JACOBIAN(XX, TMP, PRES, LAMBDA_RT, TARGET_ELEM_MOL_FR, JAC, EQ_OPTION)
+   REAL(EB), INTENT(INOUT)    :: XX(N_TRACKED_SPECIES)                       ! MOLE FRACTIONS
+   REAL(EB), INTENT(INOUT)    :: TMP                                         ! TEMPERATURE
+   REAL(EB), INTENT(INOUT)    :: PRES                                        ! PRESSURE
+   REAL(EB), INTENT(INOUT) :: LAMBDA_RT(N_TRACKED_ELEMENTS+1)             ! ITERATION VARIABLES
+   REAL(EB), INTENT(IN)    :: TARGET_ELEM_MOL_FR(:)
+   REAL(EB), INTENT(OUT)   :: JAC(N_TRACKED_ELEMENTS+1,N_TRACKED_ELEMENTS+1)  ! JACOBIAN MATRIX
+   TYPE(EQUILIBRIUM_OPTION), INTENT(IN) :: EQ_OPTION
+
+   !------------------------------------------------------------
+   ! LOCALS
+   !------------------------------------------------------------
+   INTEGER :: NE, NS
+   INTEGER :: NVAR
+   REAL(EB) :: ATOL
+   REAL(EB) :: XSAVE, DX, RDX
+   REAL(EB) :: R0(N_TRACKED_ELEMENTS+1), R1(N_TRACKED_ELEMENTS+1)
+
+   !------------------------------------------------------------
+   ! INITIALIZATION
+   !------------------------------------------------------------
+   NVAR = N_TRACKED_ELEMENTS+1
+   ATOL = 1.0E-10_EB
+
+   !------------------------------------------------------------
+   ! BASE RESIDUAL
+   !------------------------------------------------------------
+   CALL EQUIL_RESIDUAL(XX, TMP, PRES, LAMBDA_RT, TARGET_ELEM_MOL_FR, R0, EQ_OPTION)
+
+   !------------------------------------------------------------
+   ! FINITE-DIFFERENCE JACOBIAN
+   !------------------------------------------------------------
+   DO NS = 1, NVAR
+
+     XSAVE = LAMBDA_RT(NS)
+     DX = MAX(ATOL, ABS(XSAVE) * 1.0E-7_EB)
+
+     LAMBDA_RT(NS) = XSAVE + DX
+     DX = LAMBDA_RT(NS) - XSAVE
+     RDX = 1.0_EB / DX
+
+     ! PERTURBED RESIDUAL
+     CALL EQUIL_RESIDUAL(XX, TMP, PRES, LAMBDA_RT, TARGET_ELEM_MOL_FR, R1, EQ_OPTION)
+
+     ! JACOBIAN COLUMN
+     DO NE = 1, NVAR
+         JAC(NE, NS) = (R1(NE) - R0(NE)) * RDX
+     END DO
+
+     ! RESTORE VARIABLE
+     LAMBDA_RT(NS) = XSAVE
+
+   END DO
+
+
+END SUBROUTINE EQUIL_JACOBIAN
+
+
+SUBROUTINE GET_ELEMENT_POTENTIAL(XX, TMP, PRES, TARGET_ELEM_MOL_FR, LAMBDA_RT)
+   USE PHYSICAL_FUNCTIONS, ONLY : GET_GIBBS_ENERGY_Z_INTERP
+   USE MATH_FUNCTIONS, ONLY : LINEAR_SYSTEM_SOLVE
+
+   ! Arguments
+   !-----------------------------
+   REAL(EB), INTENT(INOUT) :: XX(N_TRACKED_SPECIES)     ! species mole fractions
+   REAL(EB), INTENT(IN)    :: TMP, PRES
+   REAL(EB), INTENT(IN)    :: TARGET_ELEM_MOL_FR(N_TRACKED_ELEMENTS)
+   REAL(EB), INTENT(OUT)   :: LAMBDA_RT(N_TRACKED_ELEMENTS)
+
+
+   !-----------------------------
+   ! Local variables
+   !-----------------------------
+   INTEGER :: N_COMPONENTS
+   INTEGER :: NS, NE
+   INTEGER  :: SPECIES_ORDER(N_TRACKED_SPECIES)
+   INTEGER  :: ELEMENTS_ORDER(N_TRACKED_ELEMENTS)
+   REAL(EB) :: LAMBDA_RT_DUMMY(N_TRACKED_ELEMENTS)
+
+   CHARACTER(MESSAGE_LENGTH) :: MESSAGE
+
+   INTEGER :: IERR
+   INTEGER, ALLOCATABLE :: IPIV(:)
+   REAL(EB), ALLOCATABLE :: A(:,:), B(:),MU_RT(:)
+
+   !-----------------------------
+   ! Calculate basis
+   !-----------------------------
+   CALL BASISOPTIMIZE(XX, SPECIES_ORDER, ELEMENTS_ORDER, N_COMPONENTS)
+
+   
+   !-----------------------------
+   ! Rearrange elements
+   !-----------------------------
+   CALL ELEMREARRANGE(N_COMPONENTS, TARGET_ELEM_MOL_FR, SPECIES_ORDER, ELEMENTS_ORDER)
+
+   
+   !---------------------------------------------------------
+   ! Solve for element potentials:
+   ! Solve linear system.
+   ! A * x = b
+   !---------------------------------------------------------
+
+   ALLOCATE(A(N_COMPONENTS, N_COMPONENTS), &
+            B(N_COMPONENTS), &
+            IPIV(N_COMPONENTS), &
+            MU_RT(N_COMPONENTS))
+
+   DO NS = 1, N_COMPONENTS
+      DO NE = 1, N_COMPONENTS
+         A(NS, NE) = SPECIES_MIXTURE(SPECIES_ORDER(NS))%ATOMS(TRACKED_ELEM_INDX(ELEMENTS_ORDER(NE)))
+      END DO
+   END DO
+
+   DO NS = 1, N_COMPONENTS
+      CALL GET_GIBBS_ENERGY_Z_INTERP(SPECIES_ORDER(NS), MU_RT(NS), TMP, PRES)
+      MU_RT(NS) = MU_RT(NS)+LOG(XX(SPECIES_ORDER(NS))+TWO_EPSILON_EB)
+      MU_RT(NS) = MU_RT(NS)/ (R0 * TMP)
+      B(NS) = MU_RT(NS)
+   END DO
+
+   CALL LINEAR_SYSTEM_SOLVE(N_COMPONENTS,N_COMPONENTS,A,B,LAMBDA_RT_DUMMY,IERR)
+
+   IF(IERR >0) THEN
+      WRITE(MESSAGE,'(A,A,A)') 'Singular matrix to solve element potential.'
+      IF (MY_RANK==0) WRITE(LU_ERR,'(A)') TRIM(MESSAGE)
+      RETURN
+   ENDIF
+
+   DO NE = N_COMPONENTS + 1, N_TRACKED_ELEMENTS
+      LAMBDA_RT_DUMMY(ELEMENTS_ORDER(NE) ) = 0.0_EB
+   END DO
+
+   DO NE = 1, N_TRACKED_ELEMENTS    
+        LAMBDA_RT(ELEMENTS_ORDER(NE))=LAMBDA_RT_DUMMY(NE) 
+     ENDDO 
+
+   DEALLOCATE(A, B, IPIV, MU_RT)
+END SUBROUTINE GET_ELEMENT_POTENTIAL
+
+
+
+SUBROUTINE BASISOPTIMIZE(XX,SPECIES_ORDER,ELEMENTS_ORDER,N_COMPONENT)
+
+   ! -------------------------
+   ! Inputs
+   REAL(EB), INTENT(IN) :: XX(N_TRACKED_SPECIES)
+
+   ! Outputs
+   INTEGER, INTENT(OUT) :: SPECIES_ORDER(N_TRACKED_SPECIES)
+   INTEGER, INTENT(OUT) :: ELEMENTS_ORDER(N_TRACKED_ELEMENTS)
+   INTEGER, INTENT(OUT) :: N_COMPONENT
+
+   ! -------------------------
+   ! Local variables
+   INTEGER :: NS, NE, I, J, KK, JR
+   REAL(EB) :: MOLNUM(N_TRACKED_SPECIES)
+   REAL(EB) :: SM(N_TRACKED_ELEMENTS, N_TRACKED_ELEMENTS)
+   REAL(EB) :: SA(N_TRACKED_ELEMENTS)
+   REAL(EB) :: SS(N_TRACKED_ELEMENTS)
+   REAL(EB) :: XMAX
+   INTEGER :: DUMMY_INT
+
+   REAL(EB), PARAMETER :: USED_BEFORE = -1.0E300_EB
+   REAL(EB), PARAMETER :: TOL = 1.0E-6_EB
+
+   ! -------------------------
+   ! Initialization
+   DO NS = 1, N_TRACKED_SPECIES
+      SPECIES_ORDER(NS) = NS
+      MOLNUM(NS) = XX(NS)
+   END DO
+
+   DO NE = 1, N_TRACKED_ELEMENTS
+      ELEMENTS_ORDER(NE) = NE
+      SA(NE) = 0.0_EB
+   END DO
+
+   SM = 0.0_EB
+   SS = 0.0_EB
+
+   ! Maximum possible number of components
+   N_COMPONENT = MIN(N_TRACKED_SPECIES, N_TRACKED_ELEMENTS)
+   
+   JR = 0
+
+   ! =============================
+   ! Main component selection loop
+   ! =============================
+   DO WHILE (JR < N_COMPONENT)
+
+      ! ----------------------------------
+      ! Pick species with max mole number
+      ! ----------------------------------
+      XMAX = -1.0_EB
+      KK = -1
+      DO NS = 1, N_TRACKED_SPECIES
+         IF (MOLNUM(NS) > XMAX) THEN
+            XMAX = MOLNUM(NS)
+            KK = NS
+         END IF
+      END DO
+
+      IF (KK < 0) EXIT
+      IF (MOLNUM(KK) == USED_BEFORE) EXIT
+
+      ! Mark as used
+      MOLNUM(KK) = USED_BEFORE
+
+      ! ----------------------------------
+      ! Build formula vector for species KK
+      ! ----------------------------------
+      DO NE = 1, N_TRACKED_ELEMENTS
+         SM(NE, JR+1) = SPECIES_MIXTURE(KK)%ATOMS(TRACKED_ELEM_INDX(ELEMENTS_ORDER(NE)))
+      END DO
+
+      ! ----------------------------------
+      ! Modified Gram-Schmidt
+      ! ----------------------------------
+      IF (JR > 0) THEN
+         DO J = 1, JR
+            SS(J) = 0.0_EB
+            DO NE = 1, N_TRACKED_ELEMENTS
+               SS(J) = SS(J) + SM(NE, JR+1) * SM(NE, J)
+            END DO
+            SS(J) = SS(J) / SA(J)
+            
+            DO NE = 1, N_TRACKED_ELEMENTS
+               SM(NE, JR+1) = SM(NE, JR+1) - SS(J) * SM(NE, J)
+            END DO
+         END DO
+      END IF
+
+      ! ----------------------------------
+      ! Compute norm
+      ! ----------------------------------
+      SA(JR+1) = 0.0_EB
+      DO NE = 1, N_TRACKED_ELEMENTS
+         SA(JR+1) = SA(JR+1) + SM(NE, JR+1)**2
+      END DO
+
+      ! ----------------------------------
+      ! Accept or reject
+      ! ----------------------------------
+      IF (SA(JR+1) > TOL) THEN
+         JR = JR + 1
+         ! Move accepted species to front
+         IF (SPECIES_ORDER(JR) /= KK) THEN
+            DO I = JR, N_TRACKED_SPECIES
+               IF (SPECIES_ORDER(I) == KK) THEN
+                  DUMMY_INT = SPECIES_ORDER(JR)
+                  SPECIES_ORDER(JR) = KK
+                  SPECIES_ORDER(I) = DUMMY_INT
+                  EXIT
+               END IF
+            END DO
+         END IF
+      END IF
+
+   END DO
+
+   N_COMPONENT = JR
+
+END SUBROUTINE BASISOPTIMIZE
+
+
+SUBROUTINE ELEMREARRANGE(N_COMPONENTS, TARGET_ELEM_MOL_FR, SPECIES_ORDER, ELEMENTS_ORDER)
+
+   INTEGER, INTENT(IN) :: N_COMPONENTS
+   REAL(EB), INTENT(IN) :: TARGET_ELEM_MOL_FR(N_TRACKED_ELEMENTS)
+   INTEGER, INTENT(IN) :: SPECIES_ORDER(N_TRACKED_SPECIES)
+   INTEGER, INTENT(INOUT) :: ELEMENTS_ORDER(N_TRACKED_ELEMENTS)
+
+   ! Local variables
+   INTEGER :: NS, NE, JR, JL, K, KK, ML
+   INTEGER :: DUMMY_INT
+   REAL(EB) :: EABUND(N_TRACKED_ELEMENTS)
+   REAL(EB) :: SA(N_TRACKED_ELEMENTS)
+   REAL(EB) :: SS(N_TRACKED_ELEMENTS)
+   REAL(EB) :: SM(N_TRACKED_ELEMENTS, N_TRACKED_ELEMENTS)
+   REAL(EB), PARAMETER :: TOL = 1.0D-6
+   REAL(EB), PARAMETER :: USEDBEFORE = -1.0D100
+
+   DO NE = 1, N_TRACKED_ELEMENTS
+     IF (ELEMENTS_ORDER(NE) <= 0) ELEMENTS_ORDER(NE) = NE
+     SA(NE) = 0.0_EB
+   END DO
+
+   ! Compute element abundances based on species mixture
+   DO NE = 1, N_TRACKED_ELEMENTS
+     EABUND(NE) = TARGET_ELEM_MOL_FR(NE)
+   END DO
+
+   ! Find independent elements
+   JR = 0
+   DO WHILE (JR < N_COMPONENTS)
+     ! Find next candidate element
+     K = N_TRACKED_ELEMENTS + 1
+     DO NE = JR+1, N_TRACKED_ELEMENTS
+         KK = ELEMENTS_ORDER(NE)
+         IF (EABUND(KK) /= USEDBEFORE .AND. EABUND(KK) > 0.0_EB) THEN
+             K = NE
+             EXIT
+         END IF
+     END DO
+
+     ! Pick any remaining element if none positive
+     IF (K > N_TRACKED_ELEMENTS) THEN
+         DO NE = JR+1, N_TRACKED_ELEMENTS
+             KK = ELEMENTS_ORDER(NE)
+             IF (EABUND(KK) /= USEDBEFORE) THEN
+                 K = NE
+                 EXIT
+             END IF
+         END DO
+     END IF
+
+     ! Error if not enough independent elements
+     IF (K > N_TRACKED_ELEMENTS) THEN
+         PRINT *, "Error: Not enough independent elements"
+         STOP
+     END IF
+
+     KK = ELEMENTS_ORDER(K)
+     EABUND(KK) = USEDBEFORE
+
+     ! Fill SM row for this element (with component species)
+     DO NS = 1, N_COMPONENTS
+         SM(NS, JR+1) = SPECIES_MIXTURE(SPECIES_ORDER(NS))%ATOMS(TRACKED_ELEM_INDX(KK))
+     END DO
+
+     ! Modified Gram-Schmidt
+     JL = JR
+     IF (JL > 0) THEN
+         DO NE = 1, JL
+             SS(NE) = 0.0_EB
+             DO NS = 1, N_COMPONENTS
+                 SS(NE) = SS(NE) + SM(NS, JR+1) * SM(NS, NE)
+             END DO
+             SS(NE) = SS(NE) / SA(NE)
+
+             DO NS = 1, N_COMPONENTS
+                 SM(NS, JR+1) = SM(NS, JR+1) - SS(NE) * SM(NS, NE)
+             END DO
+         END DO
+     END IF
+
+     ! Compute norm
+     SA(JR+1) = 0.0_EB
+     DO ML = 1, N_COMPONENTS
+         SA(JR+1) = SA(JR+1) + SM(ML, JR+1)**2
+     END DO
+
+     ! Accept if not too small
+     IF (SA(JR+1) > TOL) THEN
+         ! Swap into JR position
+         IF (JR+1 /= K) THEN
+             DUMMY_INT = ELEMENTS_ORDER(JR+1)
+             ELEMENTS_ORDER(JR+1) = ELEMENTS_ORDER(K)
+             ELEMENTS_ORDER(K) = DUMMY_INT
+         END IF
+         JR = JR + 1
+     END IF
+   END DO
+
+END SUBROUTINE ELEMREARRANGE
+
+
+
+! Solve the Stoichimetric equations assuming Constant Volume (density) and First fixed variable (enthalpy or internal energy).
+SUBROUTINE SET_APPROXIMATE_INITIAL_MOLES_SOLUTION(XX,TMP_IN,PRES_IN,TMP_OUT,PRES_OUT,EQ_OPTION)
+   USE PHYSICAL_FUNCTIONS, ONLY : GET_MOLECULAR_WEIGHT_FROM_MOLE_FRACTIONS
+
+   REAL(EB), INTENT(INOUT) :: XX(N_TRACKED_SPECIES)
+   REAL(EB), INTENT(IN)    :: TMP_IN,PRES_IN
+   REAL(EB), INTENT(OUT)    :: TMP_OUT,PRES_OUT
+   TYPE(EQUILIBRIUM_OPTION), INTENT(IN) :: EQ_OPTION
+   
+   INTEGER  :: ITER
+   REAL(EB) :: MIN_ALLOWED_TMP,MAX_ALLOWED_TMP,TMIN,TMAX,PRMIN,PRMAX,RHO,MW
+   REAL(EB) :: VAR_LOW,VAR_HIGH,VAR_VAL,FIXED_FIRST_VAR,TMP0,DTMP,PRES_IT,SLOPE
+
+
+   MIN_ALLOWED_TMP=300.0_EB
+   MAX_ALLOWED_TMP=5000.0_EB !REAL(I_MAX_TEMP)
+
+   TMIN = MAX(TMP_IN, MIN_ALLOWED_TMP)
+   IF (TMIN > MAX_ALLOWED_TMP) THEN
+       TMIN = MAX_ALLOWED_TMP - 20._EB
+   END IF
+   TMAX = MIN(TMIN + 10._EB, MAX_ALLOWED_TMP)
+   IF (TMAX < MIN_ALLOWED_TMP) THEN
+       TMAX = MIN_ALLOWED_TMP + 20._EB
+   END IF
+
+   
+   IF (N_TRACKED_SPECIES .LT. N_TRACKED_ELEMENTS) THEN
+      ! This alogorithm only works when number of species is more than number of elements, which is mostly the case.
+      RETURN
+   ENDIF
+
+   CALL GET_MOLECULAR_WEIGHT_FROM_MOLE_FRACTIONS(XX,MW)
+   RHO = PRES_IN*MW/R0/TMP_IN
+
+   PRMAX = RHO/MW*R0*TMAX
+   CALL SET_INITIAL_MOLES_BASED_ON_STOICHIOMETRY(XX,TMAX,PRMAX) ! Min temp
+   CALL GET_FIRST_VAR_VAL(XX,TMAX,PRMAX,EQ_OPTION,VAR_HIGH)
+   
+   PRMIN = RHO/MW*R0*TMIN
+   CALL SET_INITIAL_MOLES_BASED_ON_STOICHIOMETRY(XX,TMIN,PRMIN) ! Max temp
+   CALL GET_FIRST_VAR_VAL(XX,TMIN,PRMIN,EQ_OPTION,VAR_LOW)
+   
+   CALL GET_FIRST_FIXED_VAL(EQ_OPTION,FIXED_FIRST_VAR) 
+   TMP0 = 0.5_EB * (TMIN + TMAX)
+
+   DO ITER = 1, 10
+
+      PRES_IT = RHO / MW * R0 * TMP0
+      CALL SET_INITIAL_MOLES_BASED_ON_STOICHIOMETRY(XX, TMP0, PRES_IT)
+      CALL GET_FIRST_VAR_VAL(XX, TMP0, PRES_IT, EQ_OPTION, VAR_VAL)
+
+      ! --- Update bracket ---
+      IF (VAR_VAL > FIXED_FIRST_VAR) THEN
+         TMAX = TMP0
+         VAR_HIGH = VAR_VAL
+      ELSE
+         TMIN = TMP0
+         VAR_LOW = VAR_VAL
+      END IF
+
+      ! --- Linear interpolation (secant step) ---
+      SLOPE = (VAR_HIGH - VAR_LOW) / (TMAX - TMIN)
+      DTMP = (FIXED_FIRST_VAR - VAR_VAL) / SLOPE
+      IF (ABS(DTMP) < 50._EB) EXIT
+
+      DTMP = MAX(-200._EB, MIN(200._EB, DTMP))
+      IF (TMP0 + DTMP < MIN_ALLOWED_TMP) THEN
+         DTMP = 0.5_EB * (TMP0 + MIN_ALLOWED_TMP) - TMP0
+      END IF
+      IF (TMP0 + DTMP > MAX_ALLOWED_TMP) THEN
+         DTMP = 0.5_EB * (TMP0 + MAX_ALLOWED_TMP) - TMP0
+      END IF
+
+      ! --- Update temperature ---
+      TMP0 = TMP0 + DTMP
+      IF (TMP0 <= MIN_ALLOWED_TMP .OR. TMP0 >= MAX_ALLOWED_TMP .OR. TMP0 < 100._EB) THEN
+         WRITE(LU_ERR,*) "ERROR: Temperature out of bounds:", TMP0
+         RETURN
+      END IF
+
+   END DO
+
+   TMP_OUT = TMP0
+   PRES_OUT = RHO / MW * R0 * TMP_OUT
+
+END SUBROUTINE SET_APPROXIMATE_INITIAL_MOLES_SOLUTION
+
+SUBROUTINE GET_FIRST_VAR_VAL(XX,TMP,PRES,EQ_OPTION,VAL)
+   USE PHYSICAL_FUNCTIONS, ONLY :  GET_MOLECULAR_WEIGHT, MOLE_FRAC_TO_MASS_FRAC, GET_ENTHALPY
+
+   REAL(EB), INTENT(IN) :: XX(N_TRACKED_SPECIES),TMP,PRES
+   TYPE(EQUILIBRIUM_OPTION), INTENT(IN) :: EQ_OPTION
+   REAL(EB), INTENT(OUT) :: VAL
+
+   REAL(EB) :: ZZ(N_TRACKED_SPECIES),MW
+
+   CALL MOLE_FRAC_TO_MASS_FRAC(XX,ZZ)
+   CALL GET_MOLECULAR_WEIGHT(ZZ,MW)
+
+   IF(DEBUG) WRITE(LU_ERR,*)"PRES=",PRES
+
+   IF (EQ_OPTION%OPTION .EQ. 1) THEN ! FIXED HP
+      CALL GET_ENTHALPY(ZZ,VAL,TMP)
+   ELSE ! FIXED UV
+      CALL GET_ENTHALPY(ZZ,VAL,TMP)
+      VAL = VAL - R0*TMP/MW ! J/kmol
+   ENDIF
+END SUBROUTINE GET_FIRST_VAR_VAL
+
+SUBROUTINE GET_SECOND_VAR_VAL(XX,TMP,PRES,EQ_OPTION,VAL)
+   USE PHYSICAL_FUNCTIONS, ONLY :  GET_MOLECULAR_WEIGHT_FROM_MOLE_FRACTIONS
+
+   REAL(EB), INTENT(IN) :: XX(N_TRACKED_SPECIES),TMP,PRES
+   TYPE(EQUILIBRIUM_OPTION), INTENT(IN) :: EQ_OPTION
+   REAL(EB), INTENT(OUT) :: VAL
+   REAL(EB) :: MW
+
+   CALL GET_MOLECULAR_WEIGHT_FROM_MOLE_FRACTIONS(XX,MW)
+
+   IF (EQ_OPTION%OPTION .EQ. 1) THEN ! FIXED HP
+      VAL = PRES
+   ELSE ! FIXED UV
+      VAL = PRES*MW/R0/TMP
+   ENDIF
+END SUBROUTINE GET_SECOND_VAR_VAL
+
+SUBROUTINE GET_FIRST_FIXED_VAL(EQ_OPTION,VAL)
+   USE PHYSICAL_FUNCTIONS, ONLY :  GET_MOLECULAR_WEIGHT, MOLE_FRAC_TO_MASS_FRAC, GET_ENTHALPY
+
+   TYPE(EQUILIBRIUM_OPTION), INTENT(IN) :: EQ_OPTION
+   REAL(EB), INTENT(OUT) :: VAL
+
+   IF (EQ_OPTION%OPTION .EQ. 1) THEN ! FIXED HP
+      VAL=EQ_OPTION%FIXED_ENTH
+   ELSE ! FIXED UV
+      VAL=EQ_OPTION%FIXED_INT_ENG
+   ENDIF
+END SUBROUTINE GET_FIRST_FIXED_VAL
+
+SUBROUTINE GET_SECOND_FIXED_VAL(EQ_OPTION,VAL)
+   USE PHYSICAL_FUNCTIONS, ONLY :  GET_MOLECULAR_WEIGHT, MOLE_FRAC_TO_MASS_FRAC, GET_ENTHALPY
+
+   TYPE(EQUILIBRIUM_OPTION), INTENT(IN) :: EQ_OPTION
+   REAL(EB), INTENT(OUT) :: VAL
+
+   IF (EQ_OPTION%OPTION .EQ. 1) THEN ! FIXED HP
+      VAL=EQ_OPTION%FIXED_PRES
+   ELSE ! FIXED UV
+      VAL=EQ_OPTION%FIXED_RHO
+   ENDIF
+END SUBROUTINE GET_SECOND_FIXED_VAL
+
+SUBROUTINE SET_INITIAL_MOLES_BASED_ON_STOICHIOMETRY(XX,TMP,PRES)
+   USE PHYSICAL_FUNCTIONS, ONLY : GET_GIBBS_ENERGY_Z_INTERP
+
+   REAL(EB), INTENT(IN) :: TMP, PRES
+   REAL(EB), INTENT(INOUT) :: XX(N_TRACKED_SPECIES)
+   
+   INTEGER  :: N_FREE
+   REAL(EB) :: MU(N_TRACKED_SPECIES) 
+   REAL(EB) :: STOICH_MAT(N_TRACKED_SPECIES,N_TRACKED_SPECIES-N_TRACKED_ELEMENTS) 
+   REAL(EB) :: DG_RT,DELTA_XI,DIR,NU,DXI_MIN
+   INTEGER  :: NF,NS,ITER
+   LOGICAL :: REDO
+
+   N_FREE = N_TRACKED_SPECIES-N_TRACKED_ELEMENTS
+   MU = 0.0_EB ! Chemical potential
+   DO NS = 1, N_TRACKED_SPECIES
+      CALL GET_GIBBS_ENERGY_Z_INTERP(NS,MU(NS),TMP,PRES)
+      !WRITE(LU_ERR,*)"ID,MU,XX=",SPECIES_MIXTURE(NS)%ID,MU(NS),XX(NS)
+   END DO
+
+   REDO = .TRUE.
+   ITER = 0
+   DO WHILE(REDO)
+      CALL COMPUTE_STOICH_MATRIX(XX,STOICH_MAT)
+      REDO = .FALSE.
+      ITER = ITER +1
+      IF (ITER > 4) EXIT
+
+      DO NF = 1, N_FREE
+         DG_RT = 0.0
+         DXI_MIN = 1.0E10_EB
+
+         DO NS = 1, N_TRACKED_SPECIES
+            DG_RT = DG_RT + MU(NS) * STOICH_MAT(NS, NF)
+         END DO
+         !WRITE(LU_ERR,*)"DG_RT=",DG_RT
+
+         IF (DG_RT < 0.0) THEN
+            DIR = 1.0_EB
+         ELSE
+            DIR = -1.0_EB
+         END IF
+
+         DO NS = 1, N_TRACKED_SPECIES
+            NU = STOICH_MAT(NS, NF)
+            IF (NU * DIR < 0.0) THEN
+                DELTA_XI = ABS(0.99 * XX(NS) / NU)
+
+                IF (.NOT. REDO .AND. DELTA_XI .LT. 1.0E-10_EB .AND. NS .LE. N_TRACKED_ELEMENTS) THEN
+                    REDO = .TRUE.
+                END IF
+                DXI_MIN = MIN(DXI_MIN,DELTA_XI)
+            END IF
+         END DO
+
+         DO NS = 1, N_TRACKED_SPECIES
+            XX(NS) = XX(NS) + STOICH_MAT(NS, NF) * DIR * DXI_MIN
+         END DO
+      ENDDO  
+      CALL UPDATE_MOLE_FRACTIONS(XX)
+
+   ENDDO
+
+END SUBROUTINE SET_INITIAL_MOLES_BASED_ON_STOICHIOMETRY
+
+SUBROUTINE UPDATE_MOLE_FRACTIONS(XX)
+   REAL(EB), INTENT(INOUT) :: XX(N_TRACKED_SPECIES)
+   REAL(EB) :: SUMXX
+
+   WHERE (XX < 0._EB) XX = 0._EB
+   SUMXX = SUM(XX)
+
+   IF (SUMXX > 0._EB) THEN
+      XX = XX / SUMXX
+   ELSE
+      ! ERROR
+      WRITE(LU_ERR,*)" Error: Failure in Equilibrium logic. Stopping FDS."
+      STOP
+   END IF
+END SUBROUTINE UPDATE_MOLE_FRACTIONS
+
+
+SUBROUTINE COMPUTE_STOICH_MATRIX(XX,STOICH_MAT)
+   REAL(EB), INTENT(IN) :: XX(N_TRACKED_SPECIES)
+   REAL(EB), INTENT(OUT) :: STOICH_MAT(N_TRACKED_SPECIES,N_TRACKED_SPECIES-N_TRACKED_ELEMENTS) 
+   
+   INTEGER :: SPECIES_ORDER(N_TRACKED_SPECIES)
+   
+   INTEGER  :: N_FREE   
+   REAL(EB) :: FORMULA_MAT(N_TRACKED_ELEMENTS,N_TRACKED_SPECIES)
+   REAL(EB) :: DUMMY_REAL,MAXMOLES 
+   INTEGER  :: NE,NS,ELEM_INDX,NE1,NS1,DUMMY_INT,NS_MAX
+   INTEGER :: I, J, IMAX
+   REAL(EB) :: XMAX
+
+   N_FREE = N_TRACKED_SPECIES-N_TRACKED_ELEMENTS
+
+   DO NS = 1, N_TRACKED_SPECIES
+      SPECIES_ORDER(NS) = NS
+   END DO
+
+   ! SORT SPECIES ORDER (DESCENDING ORDER)
+   DO I = 1, N_TRACKED_SPECIES-1
+      IMAX = I
+      XMAX = XX(SPECIES_ORDER(I))
+
+      DO J = I+1, N_TRACKED_SPECIES
+         IF (XX(SPECIES_ORDER(J)) > XMAX) THEN
+            IMAX = J
+            XMAX = XX(SPECIES_ORDER(J))
+         END IF
+      END DO
+
+      ! SWAP INDICES
+      IF (IMAX /= I) THEN
+         DUMMY_INT = SPECIES_ORDER(I)
+         SPECIES_ORDER(I) = SPECIES_ORDER(IMAX)
+         SPECIES_ORDER(IMAX) = DUMMY_INT
+      END IF
+   END DO
+
+   
+   DO NE = 1, N_TRACKED_ELEMENTS
+      ELEM_INDX = TRACKED_ELEM_INDX(NE)
+      DO NS = 1, N_TRACKED_SPECIES
+         FORMULA_MAT(NE, NS) = SPECIES_MIXTURE(SPECIES_ORDER(NS))%ATOMS(ELEM_INDX)
+      END DO
+   END DO
+
+   ! Form the vector of linear independent reactions
+   ! 1. Gaussian elimination with column pivoting (species with max moles are in the diagonal column)
+   ! 2. Construct the stoichiometric reaction matrix
+   STOICH_MAT = 0._EB
+   DO NE = 1, N_TRACKED_ELEMENTS
+      IF (NE <= N_TRACKED_ELEMENTS) THEN
+         MAXMOLES = -100._EB
+         NS_MAX = NE
+         DO NS = NE, N_TRACKED_SPECIES
+            IF (FORMULA_MAT(NE,NS) /= 0.0_EB .AND. ABS(XX(SPECIES_ORDER(NS))) > MAXMOLES) THEN
+                NS_MAX = NS
+                MAXMOLES = ABS(XX(SPECIES_ORDER(NS)))
+            END IF
+         END DO
+
+         DO NE1 = 1, N_TRACKED_ELEMENTS
+            DUMMY_REAL = FORMULA_MAT(NE1,NE)
+            FORMULA_MAT(NE1,NE) = FORMULA_MAT(NE1,NS_MAX)
+            FORMULA_MAT(NE1,NS_MAX) = DUMMY_REAL
+         END DO
+
+         DUMMY_INT = SPECIES_ORDER(NE)
+         SPECIES_ORDER(NE) = SPECIES_ORDER(NS_MAX)
+         SPECIES_ORDER(NS_MAX) = DUMMY_INT
+      END IF
+
+      ! Scale Row Ne To Make Pivot 1
+      DUMMY_REAL = FORMULA_MAT(NE,NE)
+      IF (ABS(DUMMY_REAL) < 1.0D-12) CYCLE
+      DO NS = 1, N_TRACKED_SPECIES
+         FORMULA_MAT(NE,NS) = FORMULA_MAT(NE,NS) / DUMMY_REAL
+      END DO
+
+      ! Eliminate Below
+      DO NE1 = NE+1, N_TRACKED_ELEMENTS
+         DUMMY_REAL = FORMULA_MAT(NE1,NE)
+         DO NS = 1, N_TRACKED_SPECIES
+            FORMULA_MAT(NE1,NS) = FORMULA_MAT(NE1,NS) - &
+                       DUMMY_REAL * FORMULA_MAT(NE,NS)
+         END DO
+      END DO
+   END DO
+
+   
+   ! Back-Substitution 
+   DO NE = N_TRACKED_ELEMENTS, 1, -1
+       DO NE1 = NE-1, 1, -1
+           IF (FORMULA_MAT(NE1,NE) /= 0.0_EB) THEN
+               DUMMY_REAL = FORMULA_MAT(NE1,NE)
+               DO NS = NE, N_TRACKED_SPECIES
+                   FORMULA_MAT(NE1,NS) = FORMULA_MAT(NE1,NS) - &
+                          DUMMY_REAL * FORMULA_MAT(NE,NS)
+               END DO
+           END IF
+       END DO
+   END DO
+
+   ! Construct Stoichiometric Matrix 
+   DO NS = 1, N_TRACKED_SPECIES
+       IF (NS .LE. N_TRACKED_ELEMENTS) THEN
+           DO NS1 = 1, N_FREE
+               STOICH_MAT(SPECIES_ORDER(NS), NS1) = -FORMULA_MAT(NS, NS1 + N_TRACKED_ELEMENTS)
+           END DO
+       ELSE
+           DO NS1 = 1, N_FREE
+               STOICH_MAT(SPECIES_ORDER(NS), NS1) = 0.0_EB
+           END DO
+           STOICH_MAT(SPECIES_ORDER(NS), NS - N_TRACKED_ELEMENTS) = 1.0_EB
+       END IF
+   END DO
+
+   !CALL PRINT_STOICH_MATRIX(STOICH_MAT)
+
+END SUBROUTINE COMPUTE_STOICH_MATRIX
+
+SUBROUTINE PRINT_STOICH_MATRIX(STOICH_MAT)   
+   REAL(EB), INTENT(IN) :: STOICH_MAT(N_TRACKED_SPECIES,N_TRACKED_SPECIES-N_TRACKED_ELEMENTS) 
+   INTEGER  :: N_FREE
+   INTEGER  :: NS,NS1
+   INTEGER  :: STOICH_INT_ARRAY(N_TRACKED_SPECIES)
+   CHARACTER(LEN=512) :: LHS, RHS, TMPSTR
+
+   N_FREE = N_TRACKED_SPECIES-N_TRACKED_ELEMENTS
+
+
+
+   DO NS1 = 1, N_FREE
+      CALL FRACTIONAL_REAL_TO_INTEGER(STOICH_MAT(1:N_TRACKED_SPECIES, NS1), N_TRACKED_SPECIES, STOICH_INT_ARRAY)
+      LHS = ''
+      RHS = ''
+      DO NS = 1, N_TRACKED_SPECIES
+         IF (STOICH_INT_ARRAY(NS) .LT. 0) THEN
+            WRITE(TMPSTR, '(I3,A)') -STOICH_INT_ARRAY(NS), ' '//TRIM(SPECIES_MIXTURE(NS)%ID)//' + '
+            LHS = TRIM(LHS)//TMPSTR
+         ENDIF
+         IF (STOICH_INT_ARRAY(NS) .GT. 0) THEN
+            WRITE(TMPSTR, '(I3,A)') STOICH_INT_ARRAY(NS), ' '//TRIM(SPECIES_MIXTURE(NS)%ID)//' + '
+            RHS = TRIM(RHS)//TMPSTR
+         ENDIF
+      END DO
+      ! Strip trailing " + " for neatness
+      LHS = LHS(1:LEN_TRIM(LHS)-2)
+      RHS = RHS(1:LEN_TRIM(RHS)-2)
+      
+      WRITE(LU_ERR,*) TRIM(LHS)//" = "//TRIM(RHS)
+   END DO
+
+END SUBROUTINE PRINT_STOICH_MATRIX
+
+
+! Needed for printing stoich reactions
+SUBROUTINE FRACTIONAL_REAL_TO_INTEGER(ARR, N, RESULT)
+   INTEGER, INTENT(IN) :: N
+   REAL(EB), INTENT(IN) :: ARR(N)
+   INTEGER, INTENT(OUT) :: RESULT(N)
+
+   INTEGER :: NUMERATORS(N), DENOMINATORS(N)
+   INTEGER :: I, COMMON_DENOMINATOR
+
+   DO I = 1, N
+     CALL RATIONALAPPROXIMATION(ARR(I), NUMERATORS(I), DENOMINATORS(I), 1.0D-8)
+   END DO
+
+   COMMON_DENOMINATOR = DENOMINATORS(1)
+   DO I = 2, N
+     COMMON_DENOMINATOR = LCM(COMMON_DENOMINATOR, DENOMINATORS(I))
+   END DO
+   DO I = 1, N
+     RESULT(I) = NUMERATORS(I) * (COMMON_DENOMINATOR / DENOMINATORS(I))
+   END DO
+END SUBROUTINE FRACTIONAL_REAL_TO_INTEGER
+
+SUBROUTINE RATIONALAPPROXIMATION(X, NUM, DEN, TOL)
+  IMPLICIT NONE
+  REAL(EB), INTENT(IN)  :: X, TOL
+  INTEGER, INTENT(OUT) :: NUM, DEN
+
+  REAL(EB) :: X0, FRAC, ERR
+  INTEGER  :: A, P0, P1, Q0, Q1, P, Q, ITER
+  INTEGER, PARAMETER :: MAXIT = 50
+  INTEGER, PARAMETER :: QMAX  = 100000
+
+  IF (ABS(X) < TOL) THEN
+     NUM = 0
+     DEN = 1
+     RETURN
+  END IF
+
+  X0 = X
+
+  ! CONTINUED FRACTION INITIALIZATION
+  P0 = 0; P1 = 1
+  Q0 = 1; Q1 = 0
+
+  DO ITER = 1, MAXIT
+
+     A = FLOOR(X0)
+     P = A * P1 + P0
+     Q = A * Q1 + Q0
+
+     ERR = ABS(X - REAL(P,EB) / REAL(Q,EB))
+     IF (ERR < TOL .OR. Q > QMAX) EXIT
+
+     FRAC = X0 - REAL(A,EB)
+     IF (ABS(FRAC) < 1.0E-14_EB) EXIT
+
+     X0 = 1.0_EB / FRAC
+
+     P0 = P1; P1 = P
+     Q0 = Q1; Q1 = Q
+  END DO
+
+  NUM = P
+  DEN = Q
+END SUBROUTINE RATIONALAPPROXIMATION
+
+
+INTEGER FUNCTION GCD(A, B)
+    IMPLICIT NONE
+    INTEGER, INTENT(IN) :: A, B
+    INTEGER :: TEMP, X, Y
+    X = A; Y = B
+    DO WHILE (Y /= 0)
+        TEMP = MOD(X, Y)
+        X = Y
+        Y = TEMP
+    END DO
+    GCD = X
+END FUNCTION GCD
+
+INTEGER FUNCTION LCM(A, B)
+    IMPLICIT NONE
+    INTEGER, INTENT(IN) :: A, B
+    LCM = ABS(A * B) / GCD(A, B)
+END FUNCTION LCM
+
+END MODULE CHEM_EQUIL
+
 !> @cond DOXYGEN_IGNORE
 #endif
 !> @endcond
