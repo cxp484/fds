@@ -398,7 +398,7 @@ REAL(EB) :: T_END                                           !< Ending time of si
 REAL(EB) :: TIME_SHRINK_FACTOR                              !< Factor to reduce specific heat and total run time
 REAL(EB) :: RELAXATION_FACTOR=1._EB                         !< Factor used to relax normal velocity nudging at immersed boundaries
 REAL(EB) :: MPI_TIMEOUT=600._EB                             !< Time to wait for MPI messages to be received (s)
-REAL(EB) :: DT_END_MINIMUM=TWO_EPSILON_EB                   !< Smallest possible final time step (s)
+REAL(EB) :: DT_END_MINIMUM=TWENTY_EPSILON_EB                   !< Smallest possible final time step (s)
 REAL(EB) :: DT_END_FILL=1.E-6_EB
 INTEGER  :: DIAGNOSTICS_INTERVAL                            !< Number of time steps between diagnostic outputs
 REAL(EB) :: UNFREEZE_TIME                                   !< Time to unfreeze a simulation
@@ -701,6 +701,7 @@ LOGICAL :: ONE_CC_PER_CARTESIAN_CELL=.TRUE.
 
 ! Threshold factor for volume of cut-cells respect to volume of Cartesian cells:
 ! Currently used in the thermo div definition of cut-cells.
+REAL(EB), PARAMETER :: DEFAULT_VOLFRAC_LINK = 0.5_EB
 
 REAL(EB) :: CCVOL_LINK=0.95_EB
 LOGICAL  :: GET_CUTCELLS_VERBOSE=.FALSE.
@@ -933,6 +934,14 @@ INTEGER :: TOTAL_SUBSTEPS_TAKEN
 CHARACTER(LABEL_LENGTH) :: FUEL_ID_FOR_AFT='null'
 INTEGER :: I_FUEL,I_CO2,I_H2O,I_O2 ! Store the index of the species in the ZZ array.
 LOGICAL  :: USE_MIXED_ZN_AFT_TMP = .FALSE.
+CHARACTER(LEN=*), PARAMETER :: DILUENT_SPECIES_LIST(*) = [ &
+    'N2', &
+    'AR', &
+    'HE', &
+    'NE', &
+    'KR', &
+    'XE'  &
+]
 
 ! Mixing
 REAL(EB) :: ZETA_ARTIFICAL_MIN_LIMIT=0.99_EB
