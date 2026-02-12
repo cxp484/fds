@@ -934,13 +934,16 @@ INTEGER :: TOTAL_SUBSTEPS_TAKEN
 CHARACTER(LABEL_LENGTH) :: FUEL_ID_FOR_AFT='null'
 INTEGER :: I_FUEL,I_CO2,I_H2O,I_O2 ! Store the index of the species in the ZZ array.
 LOGICAL  :: USE_MIXED_ZN_AFT_TMP = .FALSE.
-CHARACTER(LEN=*), PARAMETER :: DILUENT_SPECIES_LIST(*) = [ &
-    'N2', &
-    'AR', &
-    'HE', &
-    'NE', &
-    'KR', &
-    'XE'  &
+
+INTEGER, PARAMETER :: MAX_SPEC_LEN = 8
+CHARACTER(LEN=MAX_SPEC_LEN), PARAMETER :: DILUENT_SPECIES_LIST(*) = [ &
+    'N2      ', &
+    'NITROGEN', &
+    'AR      ', &
+    'HE      ', &
+    'NE      ', &
+    'KR      ', &
+    'XE      '  &
 ]
 
 ! Mixing
