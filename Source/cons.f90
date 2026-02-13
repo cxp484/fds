@@ -129,6 +129,7 @@ INTEGER, PARAMETER :: VERSION_STOP=10                  !< Flag for STATUS_STOP
 INTEGER, PARAMETER :: ODE_STOP=11                      !< Flag for STATUS_STOP
 INTEGER, PARAMETER :: HEARTBEAT_STOP=12                !< Flag for STATUS_STOP
 INTEGER, PARAMETER :: CVODE_SUBSTEP_STOP=13            !< Flag for STATUS_STOP
+INTEGER, PARAMETER :: CUSTOM_TEST_STOP=14             !< Flag for STATUS_STOP
 
 INTEGER, PARAMETER :: SPHERE_DRAG=1                    !< Flag for LPC\%DRAG_LAW (LPC means LAGRANGIAN_PARTICLE_CLASS)
 INTEGER, PARAMETER :: CYLINDER_DRAG=2                  !< Flag for LPC\%DRAG_LAW
@@ -780,6 +781,10 @@ LOGICAL, ALLOCATABLE, DIMENSION(:) :: EXTERNAL_CTRL
 
 ! VENT array
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: VENT_TOTAL_AREA  !< Array holding grid-snapped areas for all vents
+
+! Test logic for a particular unit program
+LOGICAL  :: CUSTOM_TEST = .FALSE.
+CHARACTER(LABEL_LENGTH) :: CUSTOM_TEST_TYPE='null' !Equil, Chem etc
 
 END MODULE GLOBAL_CONSTANTS
 

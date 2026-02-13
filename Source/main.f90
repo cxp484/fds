@@ -1766,6 +1766,8 @@ IF (MY_RANK==0) THEN
          WRITE(MESSAGE,'(A)') 'ERROR: External program failure - FDS stopped'
       CASE(CVODE_SUBSTEP_STOP)
          WRITE(MESSAGE,'(A)') 'STOP: CVODE substeps for 1st timestep are completed successfully - FDS stopped'
+      CASE(CUSTOM_TEST_STOP)
+         WRITE(MESSAGE,'(3A)') 'STOP: Custom test with test type ',TRIM(CUSTOM_TEST_TYPE),' completed successfully - FDS stopped'   
       CASE DEFAULT
          WRITE(MESSAGE,'(A)') 'null'
    END SELECT
