@@ -41,6 +41,8 @@ TYPE MESH_TYPE
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: MU      !< Turbulent viscosity (kg/m/s), \f$ \mu_{{\rm t},ijk} \f$
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: MU_DNS  !< Laminar viscosity (kg/m/s)
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: TMP     !< Gas temperature, \f$ T_{ijk} \f$ (K)
+   REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: INITIAL_TMP_MIX !< Initial Mixed zone gas temperature, \f$ T_{ijk} \f$ (K)
+   REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: FINAL_TMP_MIX   !< Final Mixed zone gas temperature, \f$ T_{ijk} \f$ (K)
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: Q       !< Heat release rate per unit volume, \f$ \dot{q}_{ijk}''' \f$
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: KAPPA_GAS !< Radiation absorption coefficient by gas, \f$ \kappa_{ijk} \f$
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: CHI_R   !< Radiative fraction, \f$ \chi_{{\rm r},ijk} \f$
@@ -56,6 +58,7 @@ TYPE MESH_TYPE
    INTEGER,  ALLOCATABLE, DIMENSION(:,:)   :: CHEM_ACTIVE_CELLS !< I , J ,K, igntion_zone info of chemically active cells.
    INTEGER,  ALLOCATABLE, DIMENSION(:,:)   :: CHEM_ACTIVE_CC !< ICC, JCC, igntion_zone of chemically active cells.
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: MIX_TIME    !< Mixing-controlled combustion reaction time (s)
+   REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: MOD_ZETA    !< Modified mixed zone mass fraction
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: STRAIN_RATE !< Strain rate \f$ |S|_{ijk} \f$ (1/s)
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: D_Z_MAX     !< \f$ \max D_\alpha \f$
    REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: PP_RESIDUAL !< Pressure Poisson residual (debug)
@@ -354,8 +357,8 @@ IMPLICIT NONE (TYPE,EXTERNAL)
 
 REAL(EB), POINTER, DIMENSION(:,:,:) :: &
    U,V,W,US,VS,WS,DDDT,D,DS,H,HS,KRES,FVX,FVY,FVZ,FVX_B,FVY_B,FVZ_B,FVX_D,FVY_D,FVZ_D,RHO,RHOS, &
-   MU,MU_DNS,TMP,Q,KAPPA_GAS,CHI_R,QR,QR_W,RADIATION_EMISSION,RADIATION_ABSORPTION,UII,RSUM,D_SOURCE, &
-   CSD2,MTR,MSR,WEM,MIX_TIME,CHEM_SUBIT,STRAIN_RATE,D_Z_MAX,PP_RESIDUAL,LES_FILTER_WIDTH,BFX,BFY,BFZ
+   MU,MU_DNS,TMP,INITIAL_TMP_MIX,FINAL_TMP_MIX,Q,KAPPA_GAS,CHI_R,QR,QR_W,RADIATION_EMISSION,RADIATION_ABSORPTION,UII,RSUM, &
+   D_SOURCE,CSD2,MTR,MSR,WEM,MIX_TIME,MOD_ZETA,CHEM_SUBIT,STRAIN_RATE,D_Z_MAX,PP_RESIDUAL,LES_FILTER_WIDTH,BFX,BFY,BFZ
 REAL(EB), POINTER, DIMENSION(:,:,:,:) :: ZZ,ZZS,REAC_SOURCE_TERM,DEL_RHO_D_DEL_Z,FX,FY,FZ, &
                                          SWORK1,SWORK2,SWORK3,SWORK4, &
                                          Q_REAC,AVG_DROP_DEN,AVG_DROP_TMP,AVG_DROP_RAD,AVG_DROP_AREA,M_DOT_PPP, &
@@ -518,6 +521,8 @@ FVZ_D=>M%FVZ_D
 RHO=>M%RHO
 RHOS=>M%RHOS
 TMP=>M%TMP
+INITIAL_TMP_MIX=>M%INITIAL_TMP_MIX
+FINAL_TMP_MIX=>M%FINAL_TMP_MIX
 CHEM_SUBIT=>M%CHEM_SUBIT
 CHEM_ACTIVE_CELLS=>M%CHEM_ACTIVE_CELLS
 CHEM_ACTIVE_CC=>M%CHEM_ACTIVE_CC
@@ -527,6 +532,7 @@ D_Z_MAX=>M%D_Z_MAX
 CSD2=>M%CSD2
 STRAIN_RATE=>M%STRAIN_RATE
 MIX_TIME=>M%MIX_TIME
+MOD_ZETA=>M%MOD_ZETA
 Q=>M%Q
 Q_REAC=>M%Q_REAC
 CHI_R => M%CHI_R
