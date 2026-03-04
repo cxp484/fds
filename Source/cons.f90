@@ -910,6 +910,8 @@ TYPE IGNITION_ZONE_TYPE
    REAL(EB) :: Y2            !< Upper y bound of Ignition Zone
    REAL(EB) :: Z1            !< Lower z bound of Ignition Zone
    REAL(EB) :: Z2            !< Upper z bound of Ignition Zone
+   REAL(EB) :: TMP           !< Temperature of mixed zone of ignition cells
+   REAL(EB) :: ZETA          !< Unmixed fraction
    INTEGER :: DEVC_INDEX=0   !< Index of device controlling the status of the zone
    CHARACTER(LABEL_LENGTH) :: DEVC_ID='null'  !< Name of device controlling the status of the zone
 END TYPE IGNITION_ZONE_TYPE
@@ -940,8 +942,10 @@ INTEGER :: TOTAL_SUBSTEPS_TAKEN
 ! Adiabatic flame temperature calculation
 CHARACTER(LABEL_LENGTH) :: FUEL_ID_FOR_AFT='null'
 INTEGER :: I_FUEL,I_CO2,I_H2O,I_O2 ! Store the index of the species in the ZZ array.
-LOGICAL  :: USE_MIXED_ZN_AFT_TMP = .FALSE.
-REAL(EB) :: MIXING_ZN_TMP_LIMIT = 1600.0_EB
+CHARACTER(LABEL_LENGTH) :: MIXED_ZN_MODEL='SAME-PHI-KIN_CELLTMP' ! SAME-PHI-KIN-CELLTMP,SAME-PHI-KIN-AFT,SAME-PHI-KIN-EQUILTMP,STOICH-PHI-KIN-EQUILTMP,SAME-PHI-EQUILIBRATE
+REAL(EB) :: MIXING_ZN_TMP_LIMIT = 1500.0_EB
+INTEGER, ALLOCATABLE, DIMENSION(:) :: SORTED_SPECIES_OXR ! Decreasing order
+INTEGER, ALLOCATABLE, DIMENSION(:) :: SORTED_SPECIES_OXA ! Decreasing order
 
 INTEGER, PARAMETER :: MAX_SPEC_LEN = 8
 CHARACTER(LEN=MAX_SPEC_LEN), PARAMETER :: DILUENT_SPECIES_LIST(*) = [ &
