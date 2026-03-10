@@ -1400,7 +1400,7 @@ SUBROUTINE EQUILIBRATE(ZZ, TMP_IN, PRES_IN, TMP_OUT, PRES_OUT,OPTION)
 
    ! Iterate to solve equlibrium based on fixed values (core of element potential)
    CALL SOLVE_EQUILIBRIUM(XX,TMP_OUT, PRES_OUT,TARGET_ELEM_MOL_FR,LAMBDA_RT,EQ_OPTION,IERR)
-   CALL MOLE_FRAC_TO_MASS_FRAC(XX,ZZ) ! Lets ignore warning and take the last value, and print the ZZ for diagnosis.
+   
    IF(IERR >0) THEN
       EQUIL_WARNING_CELLS = EQUIL_WARNING_CELLS+1
       WRITE(LU_ERR,'(A)') '------Failed in SOLVE_EQUILIBRIUM.----'
@@ -1409,8 +1409,11 @@ SUBROUTINE EQUILIBRATE(ZZ, TMP_IN, PRES_IN, TMP_OUT, PRES_OUT,OPTION)
       DO NS = 1,N_TRACKED_SPECIES
          WRITE(LU_ERR,'(I4,A40,A,ES24.16)') MY_RANK, TRIM(SPECIES_MIXTURE(NS)%ID), ":", ZZ_ORIG(NS)
       ENDDO
+      TMP_OUT = TMP_IN
+      PRES_OUT = PRES_IN
       RETURN
    ENDIF
+   CALL MOLE_FRAC_TO_MASS_FRAC(XX,ZZ) ! Lets ignore warning and take the last value, and print the ZZ for diagnosis.
 
 
    
