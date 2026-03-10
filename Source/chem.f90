@@ -2329,7 +2329,7 @@ SUBROUTINE SET_INITIAL_MOLES_BASED_ON_STOICHIOMETRY(XX,TMP,PRES)
             IF (NU * DIR < 0.0) THEN
                 DELTA_XI = ABS(0.99 * XX(NS) / NU)
 
-                IF ((.NOT. REDO .AND. DELTA_XI .LT. 1.0E-10_EB .AND. NS .LE. N_TRACKED_ELEMENTS) &
+                IF ((.NOT. REDO .AND. DELTA_XI .LT. 1.0E-10_EB .AND. NS1 .LE. N_TRACKED_ELEMENTS) &
                   .OR. ITER < 2 ) THEN
                     REDO = .TRUE.
                 END IF
