@@ -1403,18 +1403,20 @@ SUBROUTINE EQUILIBRATE(ZZ, TMP_IN, PRES_IN, TMP_OUT, PRES_OUT,OPTION)
    
    IF(IERR >0) THEN
       EQUIL_WARNING_CELLS = EQUIL_WARNING_CELLS+1
-      IF (IERR == 1) THEN
-         WRITE(LU_ERR,'(A)') '------Failed in SOLVE_EQUILIBRIUM singular matrix.----'
-      ELSE IF (IERR == 2) THEN
-         WRITE(LU_ERR,'(A)') '------Failed in SOLVE_EQUILIBRIUM after 1000 iterations.----'
-      ELSE
-         WRITE(LU_ERR,'(A)') '------Failed in SOLVE_EQUILIBRIUM.----'
-      ENDIF
-      WRITE(LU_ERR,'(A,I4,2ES24.16)')"RANK,TMP_OUT,PRES_OUT:",MY_RANK,TMP_OUT, PRES_OUT
-      WRITE(LU_ERR,'(A,I4,2ES24.16)')"RANK,TMP,PRES:",MY_RANK,TMP_IN, PRES_IN
-      DO NS = 1,N_TRACKED_SPECIES
-         WRITE(LU_ERR,'(I4,A40,A,ES24.16)') MY_RANK, TRIM(SPECIES_MIXTURE(NS)%ID), ":", ZZ_ORIG(NS)
-      ENDDO
+      IF (DEBUG) THEN
+         IF (IERR == 1) THEN
+            WRITE(LU_ERR,'(A)') '------Failed in SOLVE_EQUILIBRIUM singular matrix.----'
+         ELSE IF (IERR == 2) THEN
+            WRITE(LU_ERR,'(A)') '------Failed in SOLVE_EQUILIBRIUM after 1000 iterations.----'
+         ELSE
+            WRITE(LU_ERR,'(A)') '------Failed in SOLVE_EQUILIBRIUM.----'
+         ENDIF
+         WRITE(LU_ERR,'(A,I4,2ES24.16)')"RANK,TMP_OUT,PRES_OUT:",MY_RANK,TMP_OUT, PRES_OUT
+         WRITE(LU_ERR,'(A,I4,2ES24.16)')"RANK,TMP,PRES:",MY_RANK,TMP_IN, PRES_IN
+         DO NS = 1,N_TRACKED_SPECIES
+            WRITE(LU_ERR,'(I4,A40,A,ES24.16)') MY_RANK, TRIM(SPECIES_MIXTURE(NS)%ID), ":", ZZ_ORIG(NS)
+         ENDDO
+      ENDIF  
       TMP_OUT = TMP_IN
       PRES_OUT = PRES_IN
       RETURN
