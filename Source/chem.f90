@@ -25,7 +25,6 @@ TYPE :: USERDATA
     REAL(EB) :: TAU_MIX ! Mixing time scale
     REAL(EB) :: CELL_MASS ! Total mass of the cell (mixed + unmixed)
     REAL(EB), ALLOCATABLE, DIMENSION(:) :: ZZ_UNMIXED  ! Initial mass fraction or mass fraction of unmixed zone.
-    REAL(EB), ALLOCATABLE, DIMENSION(:) :: ZZ_CELL  ! Initial mass fraction of cell.
     REAL(EB) :: H_IN ! Enthalpy of the intial mass fraction
     REAL(EB) :: DUDT !Heat loss rate.
     REAL(EB) :: TMP_UNMIX
@@ -841,7 +840,6 @@ END FUNCTION DDTMP_TROE
 !> \brief cvode interface for ODE integrator. Call sundials cvode in serial mode.
 !> \param CC species concentration (kmol/m3) array
 !> \param ZZ_UNMIXED initial unmixed species mass fraction array (of the unbuned zone),needed for mixing+chem
-!> \param ZZ_CELL initial cell species mass fraction array,needed for mixing+chem
 !> \param TMP_IN is the temperature of the mixed zone (For DNS it is cell temp)
 !> \param TMP_UNMIX is the unmix zone temperature
 !> \param DUDT is the heat loss rate to adjust additional energy for ignition 
@@ -859,7 +857,7 @@ END FUNCTION DDTMP_TROE
 !> \param CVODE_CALL_OPTION 1:CV_NORMAL, 2=CV_ONE_STEP
 !> \details This is the interface subroutine to the other modules.
 
-SUBROUTINE CVODE_SERIAL(CC,ZZ_UNMIXED,ZZ_CELL,TMP_IN,TMP_UNMIX,DUDT,PR_IN,ZETA0,TAU_MIX,CELL_MASS, &
+SUBROUTINE CVODE_SERIAL(CC,ZZ_UNMIXED,TMP_IN,TMP_UNMIX,DUDT,PR_IN,ZETA0,TAU_MIX,CELL_MASS, &
                         TCUR,TEND,RTOL, ATOL,TMP_OUT, CHEM_TIME, WRITE_SUBSTEPS, CVODE_CALL_OPTION)
 USE PHYSICAL_FUNCTIONS, ONLY : MOLAR_CONC_TO_MASS_FRAC, CALC_EQUIV_RATIO, GET_ENTHALPY, GET_MOLECULAR_WEIGHT
 USE COMP_FUNCTIONS, ONLY: GET_FILE_NUMBER
@@ -871,7 +869,7 @@ USE FSUNMATRIX_DENSE_MOD       ! FORTRAN INTERFACE TO DENSE SUNMATRIX
 USE FSUNLINSOL_DENSE_MOD       ! FORTRAN INTERFACE TO DENSE SUNLINEARSOLVER
 
 REAL(EB), INTENT(INOUT) :: CC(N_TRACKED_SPECIES)
-REAL(EB), INTENT(IN)    :: ZZ_UNMIXED(N_TRACKED_SPECIES),ZZ_CELL(N_TRACKED_SPECIES)
+REAL(EB), INTENT(IN)    :: ZZ_UNMIXED(N_TRACKED_SPECIES)
 REAL(EB), INTENT(IN)    :: TMP_IN,TMP_UNMIX,PR_IN,ZETA0,TAU_MIX,CELL_MASS,TCUR,TEND,DUDT
 REAL(EB), INTENT(IN)    :: ATOL(N_TRACKED_SPECIES)
 REAL(EB), INTENT(IN)    :: RTOL
@@ -1009,8 +1007,6 @@ USER_DATA%TAU_MIX = TAU_MIX
 USER_DATA%CELL_MASS = CELL_MASS
 ALLOCATE(USER_DATA%ZZ_UNMIXED(N_TRACKED_SPECIES))
 USER_DATA%ZZ_UNMIXED = ZZ_UNMIXED
-ALLOCATE(USER_DATA%ZZ_CELL(N_TRACKED_SPECIES))
-USER_DATA%ZZ_CELL = ZZ_CELL
 CALL GET_ENTHALPY(ZZ_UNMIXED,H_IN,TMP_UNMIX)
 USER_DATA%H_IN = H_IN 
 USER_DATA%DUDT=DUDT
@@ -1110,7 +1106,6 @@ CHEM_TIME=CHEM_TIME_C(1)
 
 ! CLEAN UP
 DEALLOCATE(USER_DATA%ZZ_UNMIXED)
-DEALLOCATE(USER_DATA%ZZ_CELL)
 CALL FCVODEFREE(CVODE_MEM)
 IERR_C = FSUNLINSOLFREE(SUNLINSOL_LS)
 CALL FSUNMATDESTROY(SUNMAT_A)
