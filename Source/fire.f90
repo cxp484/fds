@@ -1015,7 +1015,7 @@ INTEGRATION_LOOP: DO TIME_ITER = 1,MAX_CHEMISTRY_SUBSTEPS
 
 ENDDO INTEGRATION_LOOP
 
-
+CALL PERFORM_ELEMENTAL_BALANCE(ZZ_GET,ZZ_0)
 ! Compute heat release rate
 
 Q_OUT = -RHO_IN*SUM(SPECIES_MIXTURE%H_F*(ZZ_GET-ZZ_0))/DT ! FDS Tech Guide (5.47)
@@ -1067,6 +1067,115 @@ IF (REAC_SOURCE_CHECK) THEN
 ENDIF
 
 END SUBROUTINE COMBUSTION_MODEL
+
+SUBROUTINE PERFORM_ELEMENTAL_BALANCE(ZZ_GET, ZZ_0)
+   USE PROPERTY_DATA
+   REAL(EB), INTENT(IN) :: ZZ_GET(N_TRACKED_SPECIES),ZZ_0(N_TRACKED_SPECIES)
+   
+   INTEGER :: NE, NS
+   INTEGER :: N_ELEMENTS
+   REAL(EB), ALLOCATABLE :: ZZ_ELEM_GET(:), ZZ_ELEM_0(:)
+   REAL(EB) :: DIFF
+   LOGICAL :: IMBALANCE_FOUND
+
+   !-------------------------------
+   ! Setup
+   !-------------------------------
+   N_ELEMENTS = 118
+
+   ALLOCATE(ZZ_ELEM_GET(N_ELEMENTS))
+   ALLOCATE(ZZ_ELEM_0(N_ELEMENTS))
+
+   ZZ_ELEM_GET = 0.0_EB
+   ZZ_ELEM_0   = 0.0_EB
+   IMBALANCE_FOUND = .FALSE.
+
+   !-------------------------------
+   ! Compute elemental mass fractions
+   !-------------------------------
+   DO NS = 1, N_TRACKED_SPECIES
+      DO NE = 1, N_ELEMENTS
+
+         ZZ_ELEM_GET(NE) = ZZ_ELEM_GET(NE) + &
+              ZZ_GET(NS) * SPECIES_MIXTURE(NS)%ATOMS(NE) * ELEMENT(NE)%MASS / &
+              SPECIES_MIXTURE(NS)%MW
+
+         ZZ_ELEM_0(NE) = ZZ_ELEM_0(NE) + &
+              ZZ_0(NS) * SPECIES_MIXTURE(NS)%ATOMS(NE) * ELEMENT(NE)%MASS / &
+              SPECIES_MIXTURE(NS)%MW
+
+      END DO
+   END DO
+
+   !-------------------------------
+   ! Compare elemental balances
+   !-------------------------------
+   DO NE = 1, N_ELEMENTS
+
+      IF (ZZ_ELEM_GET(NE) > 0.0_EB .OR. ZZ_ELEM_0(NE) > 0.0_EB) THEN
+
+         DIFF = ABS(ZZ_ELEM_GET(NE) - ZZ_ELEM_0(NE))
+
+         IF (DIFF > 1.0E-4_EB) THEN
+            IMBALANCE_FOUND = .TRUE.
+            !WRITE(*,'(A,I3,3E14.6)') 'Imbalance in element ', NE, &
+            !     ZZ_ELEM_GET(NE), ZZ_ELEM_0(NE), DIFF
+         END IF
+
+      END IF
+
+   END DO
+
+   !-------------------------------
+   ! Optional summary message
+   !-------------------------------
+   IF (IMBALANCE_FOUND) THEN
+
+      WRITE(LU_ERR,*) ' '
+      WRITE(LU_ERR,*) '*** Elemental conservation violated ***'
+      WRITE(LU_ERR,*) ' '
+
+      !---------------------------------------
+      ! Elemental mass fractions
+      !---------------------------------------
+      WRITE(LU_ERR,'(A)') 'Elemental mass fractions (GET vs 0):'
+      WRITE(LU_ERR,'(A)') '-------------------------------------'
+
+      DO NE = 1, N_ELEMENTS
+         IF (ZZ_ELEM_GET(NE) > 0.0_EB .OR. ZZ_ELEM_0(NE) > 0.0_EB) THEN
+            WRITE(LU_ERR,'(A4,3E16.8)') TRIM(ELEMENT(NE)%ABBREVIATION), &
+                 ZZ_ELEM_GET(NE), ZZ_ELEM_0(NE), &
+                 ZZ_ELEM_GET(NE) - ZZ_ELEM_0(NE)
+         END IF
+      END DO
+
+      !---------------------------------------
+      ! Species comparison
+      !---------------------------------------
+      WRITE(LU_ERR,*) ' '
+      WRITE(LU_ERR,'(A)') 'Species with differences (ZZ_GET vs ZZ_0):'
+      WRITE(LU_ERR,'(A)') '-------------------------------------------'
+
+      DO NS = 1, N_TRACKED_SPECIES
+         IF (ABS(ZZ_GET(NS) - ZZ_0(NS)) > 1.0E-8_EB) THEN
+            WRITE(LU_ERR,'(A20,3E16.8)') TRIM(SPECIES_MIXTURE(NS)%ID), &
+                 ZZ_GET(NS), ZZ_0(NS), ZZ_GET(NS) - ZZ_0(NS)
+         END IF
+      END DO
+
+      !---------------------------------------
+      ! Totals
+      !---------------------------------------
+      WRITE(LU_ERR,*) ' '
+      WRITE(LU_ERR,'(A,2E16.8)') 'Sum ZZ_GET, ZZ_0 = ', SUM(ZZ_GET), SUM(ZZ_0)
+
+   END IF
+
+   DEALLOCATE(ZZ_ELEM_GET, ZZ_ELEM_0)
+
+END SUBROUTINE PERFORM_ELEMENTAL_BALANCE
+
+
 
 !> \brief call cvode_interface after converting mass fraction to molar concentration.
 !> \param ZZ species mass fraction of cell (INOUT) that will be divided into mixed and unmixed zone.
