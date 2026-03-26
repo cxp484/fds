@@ -1,7 +1,9 @@
 MODULE SPECDATA
 
 USE PRECISION_PARAMETERS
+
 IMPLICIT NONE (TYPE,EXTERNAL)
+
 INTEGER ::  I,J
 INTEGER, PARAMETER :: NWATERK=183
 REAL(EB) :: CPLXREF_WATER(NWATERK,2)
@@ -315,14 +317,16 @@ DATA (CPLXREF_FUEL( 94,J), J=1,3) / 10.0_EB, 1.45_EB, 8.24E-04_EB /
 
 END MODULE SPECDATA
 
-MODULE WSGG_ARRAYS
-USE PRECISION_PARAMETERS
 
+MODULE WSGG_ARRAYS
+
+USE PRECISION_PARAMETERS
 REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: WSGG_B1_ARRAY,WSGG_B2_ARRAY,WSGG_D_ARRAY
 REAL(EB), ALLOCATABLE, DIMENSION(:,:,:) :: WSGG_C_ARRAY
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: WSGG_KAPPAP1_ARRAY,WSGG_KAPPAP2_ARRAY
 
 END MODULE WSGG_ARRAYS
+
 
 MODULE MIEV
 
@@ -374,11 +378,11 @@ NSB = NUMBER_SPECTRAL_BANDS
 ! PHYSICAL PARAMETERS
 ! MINIMUM MEAN RADIUS (M)
 RMMIN = 0.5_EB*1.E-6*MIE_MINIMUM_DIAMETER
-IF (RMMIN < TWO_EPSILON_EB) RMMIN = 0.5E-6_EB
+IF (RMMIN < TWENTY_EPSILON_EB) RMMIN = 0.5E-6_EB
 
 ! MAXIMUM MEAN RADIUS (M)
 RMMAX = 0.5_EB*1.E-6*MIE_MAXIMUM_DIAMETER
-IF (RMMAX < TWO_EPSILON_EB) THEN
+IF (RMMAX < TWENTY_EPSILON_EB) THEN
    IF (PRESENT(PARTICLE_CLASS)) THEN
       RMMAX = 0.5_EB*LPC%DIAMETER
    ELSE
@@ -765,7 +769,7 @@ LAMBDALOOP: DO NLAMBDA = 1, NLMBDMIE
 
 !     CALCULATE SINGLE DROP PHASE FUNCTION
 
-      IF (ABS(QS)>TWO_EPSILON_EB) THEN
+      IF (ABS(QS)>TWENTY_EPSILON_EB) THEN
          DO I = 1,NMIEANG2
             PHSFUN(I) = 2._EB*(ABS(S1(I))**2 + ABS(S2(I))**2 )
          ENDDO
@@ -779,7 +783,7 @@ LAMBDALOOP: DO NLAMBDA = 1, NLMBDMIE
       PFOR = 0._EB
       DO J = 1,NMIEANG
          DO I = J,NMIEANG
-            IF (ABS(MUD0(I,J)-MUDPI(I,J))<=TWO_EPSILON_EB) THEN
+            IF (ABS(MUD0(I,J)-MUDPI(I,J))<=TWENTY_EPSILON_EB) THEN
                CALL INTERPOLATE1D(XMU2,PHSFUN,MUD0(I,J),FTMP)
                PFOR(I,J) = PI*FTMP
             ELSE
@@ -2666,14 +2670,17 @@ END FUNCTION WRONG
 END SUBROUTINE TESTMI
 
 
+!> \brief Print out a warning or error message;  ABORT IF ERROR AFTER MAKING SYMBOLIC DUMP (MACHINE-SPECIFIC)
+
 SUBROUTINE ERRMSG( MESSAG, FATAL )
-! PRINT OUT A WARNING OR ERROR MESSAGE;  ABORT IF ERROR AFTER MAKING SYMBOLIC DUMP (MACHINE-SPECIFIC)
+
 USE COMP_FUNCTIONS, ONLY: SHUTDOWN
 CHARACTER :: MESSAG*(*)
 LOGICAL ::  FATAL,MSGLIM
 INTEGER ::  MAXMSG, NUMMSG
 SAVE      MAXMSG, NUMMSG, MSGLIM
 DATA      NUMMSG / 0 /,  MAXMSG / 100 /,  MSGLIM /.FALSE./
+
 IF (FATAL) CALL SHUTDOWN(MESSAG)
 NUMMSG = NUMMSG + 1
 IF( MSGLIM ) RETURN
@@ -2688,19 +2695,21 @@ RETURN
 END SUBROUTINE ERRMSG
 
 
+!> \brief Write names of erroneous variables and return T
+!> \param VARNAM Name of erroneous variable to be written
+
 LOGICAL FUNCTION WRTBAD( VARNAM )
-!          WRITE NAMES OF ERRONEOUS VARIABLES AND RETURN 'TRUE'
-!      INPUT :   VARNAM = NAME OF ERRONEOUS VARIABLE TO BE WRITTEN
-!                         ( CHARACTER, ANY LENGTH )
+
 CHARACTER VARNAM*(*)
 INTEGER   MAXMSG, NUMMSG
 SAVE      NUMMSG, MAXMSG
 DATA      NUMMSG / 0 /, MAXMSG / 50 /
+
 WRTBAD = .TRUE.
 NUMMSG = NUMMSG + 1
 WRITE(LU_ERR, '(3A)' ) ' ****  INPUT VARIABLE  ', VARNAM,'  IN ERROR  ****'
 IF( NUMMSG==MAXMSG ) CALL ERRMSG( 'TOO MANY INPUT ERRORS.  ABORTING...',.TRUE.)
-RETURN
+
 END FUNCTION WRTBAD
 
 
@@ -2717,7 +2726,7 @@ INTEGER ::  MINVAL
 
 WRITE(LU_ERR, '(3A,I7)' ) ' ****  SYMBOLIC DIMENSION  ', DIMNAM,'  SHOULD BE INCREASED TO AT LEAST ', MINVAL
 WRTDIM = .TRUE.
-RETURN
+
 END FUNCTION WRTDIM
 
 
@@ -2739,16 +2748,17 @@ END FUNCTION SQ
 
 END MODULE MIEV
 
-MODULE RAD
 
-! Radiation heat transfer
+!> \brief Radiation heat transfer
+
+MODULE RAD
 
 USE PRECISION_PARAMETERS
 USE GLOBAL_CONSTANTS
 USE OUTPUT_CLOCKS, ONLY: RADF_CLOCK,RADF_COUNTER
 USE MESH_POINTERS
-USE MESH_VARIABLES
 USE RADCONS
+USE RADCAL_VAR
 
 IMPLICIT NONE (TYPE,EXTERNAL)
 PRIVATE
@@ -2756,12 +2766,24 @@ PRIVATE
 PUBLIC INIT_RADIATION,COMPUTE_RADIATION,BLACKBODY_FRACTION
 
 REAL(EB) :: TYY_FAC
+INTEGER :: N_KAPPA_T=44                             !< Number of temperature points in absorption coefficient look-up table
+INTEGER :: N_KAPPA_X=50                             !< Number of species points in absorption coefficient look-up table
+REAL(EB) :: KAPPA_X_MIN=1.E-5_EB,KAPPA_X_MAX=1._EB  !< Min/max volume fraction for absorption coefficient look-up table
+REAL(EB) :: KAPPA_C_MIN=2.E-7_EB,KAPPA_C_MAX=0.2_EB !< Min/Max mass fraction for soot coefficient look-up table
+REAL(EB) :: KAPPA_X_FAC,LOG_KAPPA_X_FAC             !< Scaling factor for absorption coefficient look-up table
+REAL(EB) :: KAPPA_C_FAC,LOG_KAPPA_C_FAC             !< Scaling factor for soot coefficient look-up table
+REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: Y2RADCAL_SPECIES !< Primitive species mapping to radcal species
+REAL(EB), ALLOCATABLE, DIMENSION(:,:,:,:) :: RADCAL_SPECIES2KAPPA ! Absorption coefficient look-up table
+REAL(EB), ALLOCATABLE, DIMENSION(:) :: KAPPA_COND  !< Array to remove condensed species from absorption coefficient look-up 
+INTEGER :: N_RADCAL_ARRAY_SIZE                     !< Number of radcal species present
+INTEGER :: RADCAL_SPECIES_INDEX(16)                !< Mapping of radcal species present to radcal calling function
+CHARACTER(LABEL_LENGTH) :: RADCAL_SPECIES_ID(16)='NULL'!< Name of radcal species
 
 CONTAINS
 
 
 !> \brief Initialize radiation arrays.
-!>
+
 SUBROUTINE INIT_RADIATION
 
 ! Meanings of some variables defined here:
@@ -2782,12 +2804,13 @@ USE COMP_FUNCTIONS, ONLY: SHUTDOWN
 USE MIEV
 USE RADCAL_CALC
 USE WSGG_ARRAYS
-REAL(EB) :: THETAUP,THETALOW,PHIUP,PHILOW,F_THETA,PLANCK_C2,KSI,LT,RCRHO,YY,YY2,BBF,AP0,AMEAN,RADIANCE,TRANSMISSIVITY,X_N2,&
-            THETA,PHI,DLO
-INTEGER  :: N,I,J,K,IPC,IZERO,NN,NI,II,JJ,IIM,JJM,IBND,NS,NS2,NRA,NSB,RADCAL_TEMP(16)=0,RCT_SKIP=-1,IO
+REAL(EB) :: THETAUP,THETALOW,PHIUP,PHILOW,F_THETA,PLANCK_C2,KSI,LT,RCRHO,YY,BBF,AP0,AMEAN,RADIANCE,TRANSMISSIVITY,&
+            THETA,PHI,DLO,XX
+INTEGER  :: N,I,J,K,IPC,IZERO,NN,NI,II,JJ,IIM,JJM,IBND,NS,NRA,NSB,RADCAL_TEMP(16)=0,RCT_SKIP=-1,IO
 TYPE (LAGRANGIAN_PARTICLE_CLASS_TYPE), POINTER :: LPC
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: COSINE_ARRAY
 TYPE (RAD_FILE_TYPE), POINTER :: RF
+TYPE (SPECIES_TYPE), POINTER :: SS
 
 ! A few miscellaneous constants
 
@@ -3176,28 +3199,36 @@ MAKE_KAPPA_ARRAYS: IF (.NOT.SOLID_PHASE_ONLY .AND. ANY(SPECIES%RADCAL_ID/='null'
    END DO GET_RADCAL_SPECIES
 
    BUILD_KAPPA_ARRAY: IF (N_RADCAL_ARRAY_SIZE>0) THEN
+      
+      KAPPA_X_FAC = (KAPPA_X_MAX/KAPPA_X_MIN)**(1._EB/(N_KAPPA_X-1))
+      LOG_KAPPA_X_FAC = LOG(KAPPA_X_FAC)
+      KAPPA_C_FAC = (KAPPA_C_MAX/KAPPA_C_MIN)**(1._EB/(N_KAPPA_X-1))
+      LOG_KAPPA_C_FAC = LOG(KAPPA_C_FAC)
 
-      ALLOCATE(Z2RADCAL_SPECIES(N_RADCAL_ARRAY_SIZE,1:N_TRACKED_SPECIES),STAT=IZERO)
-      CALL ChkMemErr('RADI','ZZ2RADCAL_SPECIES',IZERO)
-      Z2RADCAL_SPECIES = 0._EB
+      ALLOCATE(Y2RADCAL_SPECIES(N_RADCAL_ARRAY_SIZE,1:N_SPECIES),STAT=IZERO)
+      CALL ChkMemErr('RADI','Y2RADCAL_SPECIES',IZERO)
+      Y2RADCAL_SPECIES = 0._EB
 
+      ALLOCATE(KAPPA_COND(N_TRACKED_SPECIES),STAT=IZERO)
+      CALL ChkMemErr('RADI','KAPPA_COND',IZERO)
+      KAPPA_COND = 1._EB
+      
       DO NS=1,N_TRACKED_SPECIES
          IF (SPECIES_MIXTURE(NS)%EVAPORATION_SMIX_INDEX>0) THEN
             CALL MEAN_CROSS_SECTIONS(SMIX_INDEX=NS)
-            CYCLE !No gas absorption for the liquid phase
+            KAPPA_COND(NS) = 0._EB
          ENDIF
-         DO NS2=1,N_SPECIES
-            IF (SPECIES(NS2)%RADCAL_INDEX > 0) THEN
-               IF (SPECIES(NS2)%RADCAL_ID/='SOOT') THEN
-                  Z2RADCAL_SPECIES(SPECIES(NS2)%RADCAL_INDEX,NS) = Z2RADCAL_SPECIES(SPECIES(NS2)%RADCAL_INDEX,NS) + &
-                                                                   REAL(N_KAPPA_Y,EB)**4 / SPECIES(NS2)%MW * Z2Y(NS2,NS)
-               ELSE
-                  Z2RADCAL_SPECIES(SPECIES(NS2)%RADCAL_INDEX,NS) = Z2RADCAL_SPECIES(SPECIES(NS2)%RADCAL_INDEX,NS) + &
-                                                                   REAL(N_KAPPA_Y,EB)**4 * 5._EB * Z2Y(NS2,NS) * &
-                                                                   SPECIES(SOOT_INDEX)%DENSITY_SOLID/SPECIES(NS2)%DENSITY_SOLID
-               ENDIF
+      ENDDO
+      DO NS=1,N_SPECIES
+         SS => SPECIES(NS)
+         IF (SS%RADCAL_INDEX > 0) THEN
+            IF (SS%RADCAL_ID/='SOOT') THEN
+               Y2RADCAL_SPECIES(SS%RADCAL_INDEX,NS) = Y2RADCAL_SPECIES(SS%RADCAL_INDEX,NS) + 1._EB / SPECIES(NS)%MW
+            ELSE
+               Y2RADCAL_SPECIES(SS%RADCAL_INDEX,NS) = Y2RADCAL_SPECIES(SPECIES(NS)%RADCAL_INDEX,NS) + &
+                                                      SPECIES(SOOT_INDEX)%DENSITY_SOLID/SPECIES(NS)%DENSITY_SOLID
             ENDIF
-         ENDDO
+         ENDIF
       ENDDO
 
       ! Allocate arrays for RadCal
@@ -3220,7 +3251,7 @@ MAKE_KAPPA_ARRAYS: IF (.NOT.SOLID_PHASE_ONLY .AND. ANY(SPECIES%RADCAL_ID/='null'
 
       ! Using RadCal, create look-up tables for the absorption coefficients for all gas species, mixture fraction or aerosols
 
-      ALLOCATE (RADCAL_SPECIES2KAPPA(N_RADCAL_ARRAY_SIZE,0:N_KAPPA_Y,0:N_KAPPA_T,NSB),STAT=IZERO)
+      ALLOCATE (RADCAL_SPECIES2KAPPA(N_RADCAL_ARRAY_SIZE,0:N_KAPPA_X,0:N_KAPPA_T,NSB),STAT=IZERO)
       CALL ChkMemErr('RADI','RADCAL_SPECIES2KAPPA',IZERO)
       RADCAL_SPECIES2KAPPA = 0._EB
       BBF = 1._EB
@@ -3241,63 +3272,33 @@ MAKE_KAPPA_ARRAYS: IF (.NOT.SOLID_PHASE_ONLY .AND. ANY(SPECIES%RADCAL_ID/='null'
             ENDIF
             RCRHO = MW_AIR*P_INF/(R0*TEMP_GAS(1))
             IF (NSB>1) BBF = BLACKBODY_FRACTION(WL_LOW(IBND),WL_HIGH(IBND),TEMP_GAS(1))
-            Y_LOOP_Z: DO J=1,N_KAPPA_Y
-               YY = (REAL(J,EB)/REAL(N_KAPPA_Y,EB))**4
-               YY2 = 1._EB-YY
-               X_N2 = YY2/28._EB
+            X_LOOP_Z: DO J=0,N_KAPPA_X-1
+               IF (J==N_KAPPA_X-1) THEN
+               XX = KAPPA_X_MAX
+               YY = KAPPA_C_MAX
+               ELSE
+                  XX = MIN(1._EB,KAPPA_X_MIN*KAPPA_X_FAC**J)
+                  YY = MIN(1._EB,KAPPA_C_MIN*KAPPA_C_FAC**J)
+               ENDIF
                N = 0
                RADCAL_SPECIES_LOOP: DO NS = 1, N_RADCAL_ARRAY_SIZE
                   PARTIAL_PRESSURES_ATM = 0._EB
                   SELECT CASE(RADCAL_SPECIES_INDEX(NS))
-                     CASE(1) ! CARBON DIOXIDE
-                        PARTIAL_PRESSURES_ATM(1,1) = YY/(YY+44._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(1,1)
-                     CASE(2) ! WATER VAPOR
-                        PARTIAL_PRESSURES_ATM(2,1) = YY/(YY+18._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(2,1)
-                     CASE(3) ! CARBON MONOXIDE
-                        PARTIAL_PRESSURES_ATM(3,1) = YY/(YY+28._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(3,1)
-                     CASE(4) ! METHANE
-                        PARTIAL_PRESSURES_ATM(4,1) = YY/(YY+16._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(4,1)
-                     CASE(5) ! EHTYLENE
-                        PARTIAL_PRESSURES_ATM(5,1) = YY/(YY+28._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(5,1)
-                     CASE(6) ! ETHANE
-                        PARTIAL_PRESSURES_ATM(6,1) = YY/(YY+30._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(6,1)
-                     CASE(7) ! PROPYLENE
-                        PARTIAL_PRESSURES_ATM(7,1) = YY/(YY+42._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(7,1)
-                     CASE(8) ! PROPANE
-                        PARTIAL_PRESSURES_ATM(8,1) = YY/(YY+44._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(8,1)
-                     CASE(9) ! TOLUENE
-                        PARTIAL_PRESSURES_ATM(9,1) = YY/(YY+92._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(9,1)
-                     CASE(10) ! N-HEPTANE
-                        PARTIAL_PRESSURES_ATM(10,1) = YY/(YY+100._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(10,1)
-                     CASE(11) ! METHANOL
-                        PARTIAL_PRESSURES_ATM(11,1) = YY/(YY+32._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(11,1)
-                     CASE(12) ! MMA
-                        PARTIAL_PRESSURES_ATM(12,1) = YY/(YY+100._EB*X_N2)
-                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - PARTIAL_PRESSURES_ATM(12,1)
+                     CASE(1:12) ! All non-soot, non NITROGEN species
+                        PARTIAL_PRESSURES_ATM(RADCAL_SPECIES_INDEX(NS),1) = XX
+                        PARTIAL_PRESSURES_ATM(14,1) = 1._EB - XX
                      CASE(16) ! SOOT
-                        YY2 = 0.2_EB*YY
-                        PARTIAL_PRESSURES_ATM(16,1) = YY2*RCRHO/SPECIES(SOOT_INDEX)%DENSITY_SOLID
+                        PARTIAL_PRESSURES_ATM(16,1) = YY*RCRHO/SPECIES(SOOT_INDEX)%DENSITY_SOLID
                         PARTIAL_PRESSURES_ATM(14,1) = 1._EB
                   END SELECT
                   CALL SUB_RADCAL(AMEAN,AP0,RADIANCE,TRANSMISSIVITY)
                   IF (PATH_LENGTH > 0.0_EB) THEN
-                     RADCAL_SPECIES2KAPPA(NS,J,K,IBND) = MIN(AMEAN,AP0)/BBF
+                     RADCAL_SPECIES2KAPPA(NS,J+1,K,IBND) = MIN(AMEAN,AP0)/BBF
                   ELSE ! zero path length
-                     RADCAL_SPECIES2KAPPA(NS,J,K,IBND) = AP0/BBF
+                     RADCAL_SPECIES2KAPPA(NS,J+1,K,IBND) = AP0/BBF
                   ENDIF
                END DO RADCAL_SPECIES_LOOP
-            ENDDO Y_LOOP_Z
+            ENDDO X_LOOP_Z
          ENDDO T_LOOP_Z
          ! Interpolate KAPPA at RADTMP
          IF (RCT_SKIP == 0) THEN
@@ -3560,21 +3561,23 @@ IF (UPDATE_INTENSITY) THEN
       WC => WALL(IW)
       IF (WC%B1_INDEX==0 .OR. WC%BOUNDARY_TYPE==NULL_BOUNDARY) CYCLE
       B1 => BOUNDARY_PROP1(WC%B1_INDEX)
-      B1%Q_RAD_IN = 0._EB
-      SF  => SURFACE(WALL(IW)%SURF_INDEX)
+      SF => SURFACE(WALL(IW)%SURF_INDEX)
+      IF (SF%TMP_GAS_FRONT<=0._EB) B1%Q_RAD_IN = 0._EB
    ENDDO
    DO IP=1,NLP
       LP => LAGRANGIAN_PARTICLE(IP)
       IF (LP%B1_INDEX==0) CYCLE
+      LPC => LAGRANGIAN_PARTICLE_CLASS(LP%CLASS_INDEX)
       B1 => BOUNDARY_PROP1(LP%B1_INDEX)
-      B1%Q_RAD_IN = 0._EB
+      SF => SURFACE(LPC%SURF_INDEX)
+      IF (SF%TMP_GAS_FRONT<=0._EB) B1%Q_RAD_IN = 0._EB
    ENDDO
    DO ICF=INTERNAL_CFACE_CELLS_LB+1,INTERNAL_CFACE_CELLS_LB+N_INTERNAL_CFACE_CELLS
       CFA => CFACE(ICF)
       IF (CFA%B1_INDEX==0) CYCLE
       B1 => BOUNDARY_PROP1(CFA%B1_INDEX)
-      B1%Q_RAD_IN = 0._EB
       SF  => SURFACE(CFA%SURF_INDEX)
+      IF (SF%TMP_GAS_FRONT<=0._EB) B1%Q_RAD_IN = 0._EB
    ENDDO
 ENDIF
 
@@ -3597,7 +3600,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
       Z_ARRAY(1:N_TRACKED_SPECIES) = SPECIES_MIXTURE(1:N_TRACKED_SPECIES)%ZZ0     ! Mass frac of the tracked species in ambient
       R_MIXTURE = RSUM0                                                           ! Specific gas constant of ambient
       MOL_RAT = GET_VOLUME_FRACTION(H2O_INDEX,Z_ARRAY,R_MIXTURE)/&
-         (GET_VOLUME_FRACTION(CO2_INDEX,Z_ARRAY,R_MIXTURE)+TWO_EPSILON_EB) ! Molar ratio
+         (GET_VOLUME_FRACTION(CO2_INDEX,Z_ARRAY,R_MIXTURE)+TWENTY_EPSILON_EB) ! Molar ratio
       BBFA = A_WSGG(TMPA,MOL_RAT,IBND)
    ELSE
       BBFA = BLACKBODY_FRACTION(WL_LOW(IBND),WL_HIGH(IBND),TMPA)
@@ -3615,7 +3618,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
          Z_ARRAY(1:N_TRACKED_SPECIES) = SPECIES_MIXTURE(1:N_TRACKED_SPECIES)%ZZ0     ! Mass frac of the tracked species in ambient
          R_MIXTURE = RSUM0                                                           ! Specific gas constant of ambient
          MOL_RAT = GET_VOLUME_FRACTION(H2O_INDEX,Z_ARRAY,R_MIXTURE)/&
-            (GET_VOLUME_FRACTION(CO2_INDEX,Z_ARRAY,R_MIXTURE)+TWO_EPSILON_EB) ! Molar ratio
+            (GET_VOLUME_FRACTION(CO2_INDEX,Z_ARRAY,R_MIXTURE)+TWENTY_EPSILON_EB) ! Molar ratio
          BBF = A_WSGG(RADTMP,MOL_RAT,IBND)
       ELSE
          BBF = BLACKBODY_FRACTION(WL_LOW(IBND),WL_HIGH(IBND),RADTMP)
@@ -3630,7 +3633,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                DO J=1,JBAR
                   DO I=1,IBAR
                      IF (CELL(CELL_INDEX(I,J,K))%SOLID) CYCLE
-                     IF (ABS(AVG_DROP_AREA(I,J,K,ARRAY_INDEX))<TWO_EPSILON_EB) CYCLE
+                     IF (ABS(AVG_DROP_AREA(I,J,K,ARRAY_INDEX))<TWENTY_EPSILON_EB) CYCLE
                      NCSDROP = AVG_DROP_AREA(I,J,K,ARRAY_INDEX)
                      CALL INTERPOLATE1D(LPC%R50,LPC%WQABS(:,IBND),AVG_DROP_RAD(I,J,K,ARRAY_INDEX),QVAL)
                      KAPPA_PART(I,J,K) = KAPPA_PART(I,J,K) + NCSDROP*QVAL
@@ -3725,7 +3728,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                R_MIXTURE = RSUM(I,J,K)                                                       ! Specific gas constant of the mixture
                X_H2O = GET_VOLUME_FRACTION(H2O_INDEX,Z_ARRAY,R_MIXTURE)
                X_CO2 = GET_VOLUME_FRACTION(CO2_INDEX,Z_ARRAY,R_MIXTURE)
-               MOL_RAT = X_H2O/(X_CO2 + TWO_EPSILON_EB)                                      ! Molar ratio
+               MOL_RAT = X_H2O/(X_CO2 + TWENTY_EPSILON_EB)                                      ! Molar ratio
                TOTAL_P = PBAR(K,PRESSURE_ZONE(I,J,K)) + RHO(I,J,K)*(H(I,J,K)-KRES(I,J,K))    ! Total pressure
                PARTIAL_P = TOTAL_P*(X_H2O + X_CO2)/P_STP                                     ! Partial press of the CO2-H2O mixture
                BBF = A_WSGG(TMP(I,J,K),MOL_RAT,IBND)                                         ! Temp coefficient for the jth gas
@@ -3860,7 +3863,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                   IF (CC_IBM) THEN
                      IF (CCVAR(I,J,K,CC_CGSC)==CC_SOLID) CYCLE
                   ENDIF
-                  IF (ZZ(I,J,K,N) < TWO_EPSILON_EB) CYCLE
+                  IF (ZZ(I,J,K,N) < TWENTY_EPSILON_EB) CYCLE
                   NCSDROP = 1.5_EB*ZZ(I,J,K,N)*RHO(I,J,K)/ &
                             (SPECIES(SPECIES_MIXTURE(N)%SINGLE_SPEC_INDEX)%DENSITY_LIQUID*SPECIES_MIXTURE(N)%MEAN_DIAMETER)
                   CALL INTERPOLATE1D(SPECIES_MIXTURE(N)%R50,SPECIES_MIXTURE(N)%WQABS(:,IBND),&
@@ -3907,7 +3910,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                Z_ARRAY(1:N_TRACKED_SPECIES) = ZZ(BC%IIG,BC%JJG,BC%KKG,1:N_TRACKED_SPECIES)
                R_MIXTURE = RSUM(BC%IIG,BC%JJG,BC%KKG)
                MOL_RAT = GET_VOLUME_FRACTION(H2O_INDEX,Z_ARRAY,R_MIXTURE)/&
-                  (GET_VOLUME_FRACTION(CO2_INDEX,Z_ARRAY,R_MIXTURE) + TWO_EPSILON_EB)
+                  (GET_VOLUME_FRACTION(CO2_INDEX,Z_ARRAY,R_MIXTURE) + TWENTY_EPSILON_EB)
                BBF = A_WSGG(B1%TMP_F,MOL_RAT,IBND) ! Temperature coefficient for the jth gray gas in the boundary
             ENDIF                                     ! (use information of the cell adjacent to the boundary)
             SF  => SURFACE(WC%SURF_INDEX)
@@ -4260,7 +4263,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                            ICF = FCVAR(I,J,K+IADD,CC_IDCF,KAXIS)
                            IF (ICF>0) AZD = AZD*CUT_FACE(ICF)%ALPHA_CF
                            IF(FCVAR(I,J,K+IADD,CC_FGSC,KAXIS)==CC_SOLID) AZD = 0._EB
-
+                           IF(ALL((/EXTCOE(I,J,K),AXD+AYD+AZD+AFD/)<TWO_EPSILON_EB)) CYCLE SLICE_LOOP
                            ! Adjust volume
                            IC = CCVAR(I,J,K,CC_IDCC)
                            VC = VC*CUT_CELL(IC)%ALPHA_CC
@@ -4401,7 +4404,7 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
                         TEMP_ORIENTATION(3) = EVALUATE_RAMP(T,IN%ORIENTATION_RAMP_INDEX(3))
                         TEMP_ORIENTATION = TEMP_ORIENTATION / &
                                            (SQRT(TEMP_ORIENTATION(1)**2+TEMP_ORIENTATION(2)**2+TEMP_ORIENTATION(3)**2) &
-                                           +TWO_EPSILON_EB)
+                                           +TWENTY_EPSILON_EB)
                      ENDIF
                   ENDIF
                   COS_DLO = -DOT_PRODUCT(TEMP_ORIENTATION(1:3),DLANG(1:3,N))
@@ -4443,8 +4446,9 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
          IF (WC%BOUNDARY_TYPE/=SOLID_BOUNDARY) CYCLE
          B1 => BOUNDARY_PROP1(WC%B1_INDEX)
          SF => SURFACE(WC%SURF_INDEX)
+         IF (SF%TMP_GAS_FRONT>0._EB) CYCLE
          IF (SF%SKIP_INRAD) INRAD_W(IW) = 0._EB
-         IF (SF%EXTERNAL_FLUX > TWO_EPSILON_EB) THEN
+         IF (SF%EXTERNAL_FLUX > TWENTY_EPSILON_EB) THEN
             IF (ABS(T_BEGIN) <= SPACING(B1%T_IGN)) THEN
                TSI = T
             ELSE
@@ -4463,7 +4467,8 @@ BAND_LOOP: DO IBND = 1,NUMBER_SPECTRAL_BANDS
          B1 => BOUNDARY_PROP1(CFA%B1_INDEX)
          SF => SURFACE(CFA%SURF_INDEX)
          IF (SF%SKIP_INRAD) INRAD_W(ICF) = 0._EB
-         IF (SF%EXTERNAL_FLUX > TWO_EPSILON_EB) THEN
+         IF (SF%TMP_GAS_FRONT>0._EB) CYCLE
+         IF (SF%EXTERNAL_FLUX > TWENTY_EPSILON_EB) THEN
             IF (ABS(T_BEGIN) <= SPACING(B1%T_IGN)) THEN
                TSI = T
             ELSE
@@ -4530,8 +4535,9 @@ IF (SOLID_PARTICLES .AND. UPDATE_INTENSITY) THEN
       LPC => LAGRANGIAN_PARTICLE_CLASS(LP%CLASS_INDEX)
       IF (LPC%SOLID_PARTICLE .OR. LPC%MASSLESS_TARGET) THEN
          SF => SURFACE(LPC%SURF_INDEX)
+         IF (SF%TMP_GAS_FRONT>0._EB) CYCLE PARTICLE_LOOP
          B1 => BOUNDARY_PROP1(LP%B1_INDEX)
-         IF (SF%EXTERNAL_FLUX > TWO_EPSILON_EB) THEN
+         IF (SF%EXTERNAL_FLUX > TWENTY_EPSILON_EB) THEN
             IF (ABS(T_BEGIN) <= SPACING(B1%T_IGN)) THEN
                TSI = T
             ELSE
@@ -4676,30 +4682,34 @@ REAL(EB) FUNCTION GET_KAPPA(Z_IN,TMP,IBND)
 
 ! Returns the radiative absorption
 
-USE PHYSICAL_FUNCTIONS, ONLY : GET_MOLECULAR_WEIGHT
-REAL(EB), INTENT(IN) :: Z_IN(1:N_TRACKED_SPECIES),TMP
-REAL(EB) :: KAPPA_TEMP,INT_FAC,KAPPA_SUM,SCALED_Y_RADCAL_SPECIES,MWA
+USE PHYSICAL_FUNCTIONS, ONLY : GET_MOLECULAR_WEIGHT,GET_MASS_FRACTION_ALL
+REAL(EB), INTENT(INOUT) :: Z_IN(1:N_TRACKED_SPECIES)
+REAL(EB), INTENT(IN) :: TMP
+REAL(EB) :: KAPPA_TEMP,INT_FAC,KAPPA_SUM,SCALED_X_RADCAL_SPECIES,MWA,Y_OUT(1:N_SPECIES)
 INTEGER, INTENT(IN) :: IBND
 INTEGER :: LBND,UBND,N,TYY
+
+Z_IN = Z_IN * KAPPA_COND
 
 KAPPA_SUM = 0._EB
 
 TYY = MAX(0 , MIN(N_KAPPA_T,INT((TMP - RTMPMIN) * TYY_FAC)))
 
 CALL GET_MOLECULAR_WEIGHT(Z_IN,MWA)
+CALL GET_MASS_FRACTION_ALL(Z_IN,Y_OUT)
 
 DO N = 1, N_RADCAL_ARRAY_SIZE
-   SCALED_Y_RADCAL_SPECIES = DOT_PRODUCT(Z2RADCAL_SPECIES(N,:),Z_IN)
-   IF (SCALED_Y_RADCAL_SPECIES<TWO_EPSILON_EB) CYCLE
+   SCALED_X_RADCAL_SPECIES = DOT_PRODUCT(Y2RADCAL_SPECIES(N,:),Y_OUT)
+   IF (SCALED_X_RADCAL_SPECIES<TWENTY_EPSILON_EB) CYCLE
    IF (RADCAL_SPECIES_INDEX(N)==16) THEN
-      INT_FAC = MAX(0._EB,SCALED_Y_RADCAL_SPECIES)**0.25_EB
+      INT_FAC = MAX(0._EB,MIN(REAL(N_KAPPA_X,EB),LOG(SCALED_X_RADCAL_SPECIES/KAPPA_C_MIN)/LOG_KAPPA_C_FAC+1._EB))
    ELSE
-      INT_FAC = MAX(0._EB,SCALED_Y_RADCAL_SPECIES*MWA)**0.25_EB
+      INT_FAC = MAX(0._EB,MIN(REAL(N_KAPPA_X,EB),LOG(SCALED_X_RADCAL_SPECIES*MWA/KAPPA_X_MIN)/LOG_KAPPA_X_FAC+1._EB))
    ENDIF
    LBND = INT(INT_FAC)
    INT_FAC = INT_FAC - LBND
-   LBND = MIN(LBND,N_KAPPA_Y)
-   UBND = MIN(LBND+1,N_KAPPA_Y)
+   LBND = MIN(LBND,N_KAPPA_X)
+   UBND = MIN(LBND+1,N_KAPPA_X)
    KAPPA_TEMP = RADCAL_SPECIES2KAPPA(N,LBND,TYY,IBND)
    KAPPA_SUM  = KAPPA_SUM + KAPPA_TEMP + INT_FAC*(RADCAL_SPECIES2KAPPA(N,UBND,TYY,IBND)-KAPPA_TEMP)
 ENDDO
@@ -4709,12 +4719,11 @@ GET_KAPPA = KAPPA_SUM
 END FUNCTION GET_KAPPA
 
 
-!==================================================================================
-!Function to compute the absorption coefficient according to Bordbar et al. (2014)
-!==================================================================================
-REAL(EB) FUNCTION KAPPA_WSGG(X_H2O, X_CO2, MOL_RATIO,PARTIAL_PRESSURE,JWSGG)
-USE WSGG_ARRAYS
+!> \brief Function to compute the absorption coefficient according to Bordbar et al. (2014)
 
+REAL(EB) FUNCTION KAPPA_WSGG(X_H2O, X_CO2, MOL_RATIO,PARTIAL_PRESSURE,JWSGG)
+
+USE WSGG_ARRAYS
 INTEGER, INTENT(IN) :: JWSGG
 INTEGER :: NN
 REAL(EB), INTENT(IN) :: X_H2O, X_CO2, MOL_RATIO,PARTIAL_PRESSURE
@@ -4722,7 +4731,7 @@ REAL(EB) :: SUM_KAPPA
 
 ! If no CO2 or H2O, return zero
 
-IF ((X_H2O<=TWO_EPSILON_EB) .AND. (X_CO2<=TWO_EPSILON_EB)) THEN
+IF ((X_H2O<=TWENTY_EPSILON_EB) .AND. (X_CO2<=TWENTY_EPSILON_EB)) THEN
    KAPPA_WSGG = 0._EB
    RETURN
 ENDIF
@@ -4753,26 +4762,21 @@ KAPPA_WSGG = SUM_KAPPA*PARTIAL_PRESSURE
 
 END FUNCTION KAPPA_WSGG
 
-!===================================================================================
-!Function to compute the temperature coefficient according to Bordbar et al. (2014)
-!===================================================================================
-REAL(EB) RECURSIVE FUNCTION A_WSGG(TTMP,MOL_RATIO,JWSGG) &
-   RESULT(A_FUNC_RES)
-USE WSGG_ARRAYS
 
+!> \brief Function to compute the temperature coefficient according to Bordbar et al. (2014)
+
+REAL(EB) RECURSIVE FUNCTION A_WSGG(TTMP,MOL_RATIO,JWSGG) RESULT(A_FUNC_RES)
+
+USE WSGG_ARRAYS
 INTEGER,INTENT(IN) :: JWSGG
 INTEGER :: MM,NN
 REAL(EB),INTENT(IN) :: MOL_RATIO,TTMP
 REAL(EB) :: TREF,SUM_A,SUM_B,SUM_C
 
-!------------------------
-!Parameters of the model
-!------------------------
 TREF = 1200._EB ! Reference temperature
 
-!------------------------------------------------------------------
-!Computing the temperature coefficient for the transparent windows
-!------------------------------------------------------------------
+! Computing the temperature coefficient for the transparent windows
+
 IF (JWSGG==5) THEN
    SUM_A = 0._EB
    DO MM=1,4
@@ -4781,19 +4785,17 @@ IF (JWSGG==5) THEN
    A_FUNC_RES = 1._EB - SUM_A
 
 ELSE
-!---------------------------------------------------------
-!Computing the temperature coefficient for the gray gases
-!(within three intervals of molar ratio)
-!---------------------------------------------------------
+   ! Computing the temperature coefficient for the gray gases (within three intervals of molar ratio)
+
    IF (MOL_RATIO < 0.01_EB) THEN               !Only CO2
-      !Computing the polynomial
+      ! Computing the polynomial
       SUM_B = 0._EB
       DO MM=0,4
          SUM_B = SUM_B + WSGG_B1_ARRAY(JWSGG,MM)*(TTMP/TREF)**(REAL(MM,EB))
       ENDDO
 
    ELSEIF (MOL_RATIO > 4._EB) THEN               !Only H2O
-      !Computing the polynomial
+      ! Computing the polynomial
       SUM_B = 0._EB
       DO MM=0,4
          SUM_B = SUM_B + WSGG_B2_ARRAY(JWSGG,MM)*(TTMP/TREF)**(REAL(MM,EB))
@@ -4817,22 +4819,16 @@ ENDIF
 END FUNCTION A_WSGG
 
 
-!====================================================
-!Function to compute the gray absorption coefficient
-!of soot (same function as the one used by Fluent)
-!====================================================
+!> \brief Function to compute the gray absorption coefficient of soot (same function as the one used by Fluent)
+
 REAL(EB) FUNCTION KAPPA_SOOT(SOOT_MASS_CONCENTRATION,TTMP)
 
 REAL(EB),INTENT(IN) :: SOOT_MASS_CONCENTRATION,TTMP
 
-   !KAPPA_SOOT = 1232.4_EB*SOOT_MASS_CONCENTRATION*(1._EB+4.8E-4_EB*(TTMP-2000._EB))
-   KAPPA_SOOT = SOOT_MASS_CONCENTRATION*(1232.4_EB+0.591552_EB*(TTMP-2000._EB))
+KAPPA_SOOT = SOOT_MASS_CONCENTRATION*(1232.4_EB+0.591552_EB*(TTMP-2000._EB))
 
 END FUNCTION KAPPA_SOOT
 
 
 END MODULE RAD
-
-
-
 
