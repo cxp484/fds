@@ -1092,9 +1092,9 @@ IF(ZETA_OUT > ZETA_ARTIFICAL_MAX_LIMIT) RETURN ! The mixing can be ignored due t
 
 CC = 0._EB
 
-! Calculate RHO based on actual temperrature, such that RHO and Concentration comes out to be same as in the cell.
+! Calculate RHO based on mixing zone temperature.
 CALL GET_MOLECULAR_WEIGHT(ZZ,MW)
-RHO_IN = PRES_IN*MW/R0/TMP_IN ! [PR]= Pa, [MW] = g/mol, [R0]= J/K/kmol, [TMP]=K, [RHO]= kg/m3
+RHO_IN = PRES_IN*MW/R0/TMP_IN_MOD ! [PR]= Pa, [MW] = g/mol, [R0]= J/K/kmol, [TMP]=K, [RHO]= kg/m3
 DO NS =1,N_TRACKED_SPECIES
   CC(NS) = RHO_IN*ZZ(NS)/SPECIES_MIXTURE(NS)%MW  ! [RHO]= kg/m3, [MW] = g/mol = kg/kmol, [CC] = kmol/m3
 ENDDO
