@@ -5,7 +5,7 @@ MODULE PRECISION_PARAMETERS
 IMPLICIT NONE (TYPE,EXTERNAL)
 
 INTEGER, PARAMETER :: FB = SELECTED_REAL_KIND(6)     !< Precision of "Four Byte" reals
-INTEGER, PARAMETER :: EB = SELECTED_REAL_KIND(12)    !< Precision of "Eight Byte" reals
+INTEGER, PARAMETER :: EB = SELECTED_REAL_KIND(15,307) !< Precision of "Eight Byte" reals
 INTEGER, PARAMETER :: QB = SELECTED_REAL_KIND(33,4931) !< Precision of "Sixteen Byte" reals
 INTEGER, PARAMETER :: MAX_LPC=20                     !< Maximum number of declared particle classes
 INTEGER, PARAMETER :: MAX_SPECIES=20                 !< Maximum number of declared species
@@ -52,5 +52,6 @@ REAL(EB), PARAMETER :: PI=4._EB*ATAN(1.0_EB), SQRTPI=SQRT(PI), RPI=1._EB/PI, TWO
                        RFPI=1._EB/(4._EB*PI), FOTHPI = FOTH*PI, CR2=2._EB**(1._EB/3._EB)
 INTEGER, PARAMETER  :: INTEGER_ZERO=0,INTEGER_ONE=1,INTEGER_TWO=2,INTEGER_THREE=3
 REAL(EB), PARAMETER :: DEG2RAD=PI/180.0_EB
+REAL(EB), PARAMETER :: LOGTEN = LOG(10._EB)
 
 END MODULE PRECISION_PARAMETERS

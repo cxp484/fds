@@ -448,6 +448,7 @@ INTEGER :: ZETA_0_RAMP_INDEX=0                                      !< Ramp inde
 LOGICAL :: OUTPUT_CHEM_IT=.FALSE.
 LOGICAL :: REAC_SOURCE_CHECK=.FALSE.
 LOGICAL :: COMPUTE_ADIABATIC_FLAME_TEMPERATURE=.FALSE.              !< Report adiabatic flame temperature per REAC in LU_OUTPUT
+LOGICAL :: VARIABLE_CFT=.FALSE.                                     !< Experimental critical flame temp concept
 
 REAL(EB) :: RSUM0                                     !< Initial specific gas constant, \f$ R \sum_i Z_{i,0}/W_i \f$
 
@@ -611,8 +612,7 @@ REAL(EB), ALLOCATABLE, DIMENSION(:) :: DSUM,USUM,PSUM
 INTEGER :: LEVEL_SET_MODE=0               !< Indicator of the type of level set calculation to be done
 LOGICAL :: LEVEL_SET_COUPLED_FIRE=.TRUE.  !< Indicator for fire and wind level set coupling
 LOGICAL :: LEVEL_SET_COUPLED_WIND=.TRUE.  !< Indicator for fire and wind level set coupling
-LOGICAL :: LEVEL_SET_ELLIPSE=.TRUE.       !< Indicator of Richards elliptical level set formulation
-LOGICAL :: LSET_TAN2
+LOGICAL :: LEVEL_SET_ELLIPSE=.TRUE.       !< Placeholder for future level set spread formulations
 
 ! Parameters for Terrain and Wind simulation needs
 
@@ -621,7 +621,6 @@ INTEGER :: N_VENT_TOTAL=0
 
 ! Sprinkler Variables
 
-REAL(EB) :: C_DIMARZO=6.E6_EB
 INTEGER :: N_ACTUATED_SPRINKLERS=0
 INTEGER, PARAMETER :: NDC=1000,NDC2=100
 INTEGER, PARAMETER :: RM_NO_B        = -1 !< Ranz-Marshall no B number
@@ -740,11 +739,11 @@ INTEGER, ALLOCATABLE, DIMENSION(:,:) :: N_EDGES_DIM_CC
 
 ! HVAC Parameters
 
-INTEGER :: N_DUCTNODES = 0, N_DUCTS = 0, N_FANS = 0, N_FILTERS = 0, N_AIRCOILS = 0,N_NETWORKS=0, N_DUCTRUNS=0,&
+INTEGER :: N_DUCTNODES = 0, N_DUCTS = 0, N_FANS = 0, N_FILTERS = 0, N_AIRCOILS = 0, N_DUCTRUNS=0,&
            N_CONNECTIVITY_INDICES, N_NODE_VARS, N_DUCT_VARS
 
 
-INTEGER , ALLOCATABLE, DIMENSION(:) :: DUCT_NE,DUCTNODE_NE,DUCT_DR,DUCTNODE_DR
+INTEGER , ALLOCATABLE, DIMENSION(:) ::DUCT_DR,DUCTNODE_DR
 REAL(EB) :: HVAC_PRES_RELAX=1.0_EB,NODE_Z_MIN,NODE_Z_MAX
 LOGICAL :: HVAC_SOLVE=.FALSE.,HVAC_LOCAL_PRESSURE=.TRUE.
 
