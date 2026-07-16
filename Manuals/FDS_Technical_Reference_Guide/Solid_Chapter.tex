@@ -17,8 +17,7 @@ The one-dimensional heat conduction equation for the solid phase temperature $T_
   \left(r \, k_{\rm s} \dod{T_{\rm s}}{r} \right)+\dq_{\rm s}'''
   \quad ; \quad
   \rho_{\rm s} c_{\rm s} \; \dod{T_{\rm s}}{t} = \frac{1}{r^2} \, \dod{}{r}
-  \left(r^2 \, k_{\rm s} \dod{T_{\rm s}}{r} \right)+\dq_{\rm s}'''
-  \label{1dheatcyl}
+  \left(r^2 \, k_{\rm s} \dod{T_{\rm s}}{r} \right)+\dq_{\rm s}''' \nonumber
 \ee
 FDS offers the user these options for cases where the obstruction surface is not flat, but rather cylindrical or spherical in shape. This option is useful in describing the behavior of small, complicated ``targets'' like cables or heat detection devices.}
 \be
@@ -26,7 +25,7 @@ FDS offers the user these options for cases where the obstruction surface is not
   \label{1dheat}
 \ee
 Sec.~\ref{matcoefs} describes the component-averaged material properties, $k_{\rm s}$ and $\rho_{\rm s} c_{\rm s}$. The source term, $\dq_{\rm s}'''$,
-consists of chemical reactions and radiative absorption:
+consists of chemical reactions, radiative absorption, and internal heat sources:
 \be
   \label{eq:solid_energy_source_term}
   \dq_{\rm s}'''=\dq_{\rm s,c}'''+\dq_{\rm s,r}'''
