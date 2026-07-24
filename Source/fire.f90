@@ -41,6 +41,12 @@ REAL(EB), INTENT(IN) :: T,DT
 INTEGER :: NM,ICC,JCC
 REAL(EB) :: TNOW
 
+IF (CUSTOM_TEST) THEN
+   CALL HANDLE_CUSTOM_TEST()
+   STOP_STATUS=CUSTOM_TEST_STOP
+   RETURN
+ENDIF
+
 TNOW=CURRENT_TIME()
 T_CHEM_ODE = 0._EB ! Zero out time taken in chem.f90 for this call to COMBUSTION
 T_CHEM_COMM = 0._EB ! Chemistry load distribution communication time
@@ -771,7 +777,7 @@ USE MATH_FUNCTIONS, ONLY: EVALUATE_RAMP
 USE PHYSICAL_FUNCTIONS, ONLY: GET_REALIZABLE_MF
 USE TURBULENCE, ONLY: K_SGS_POPE
 USE COMP_FUNCTIONS, ONLY: SHUTDOWN
-USE CHEMCONS, ONLY: ODE_MIN_ATOL
+USE CHEMCONS, ONLY: ODE_MIN_ATOL,CHECK_ELEMENTAL_BALANCE
 INTEGER, INTENT(IN) :: IGN_ZN
 INTEGER, INTENT(IN), OPTIONAL :: IIC,JJC,KKC
 REAL(EB), INTENT(IN) :: T,DT,RHO_IN,PRES_IN,MU_IN,DELTA,CELL_VOLUME,ZETA_0_IN
@@ -987,6 +993,8 @@ INTEGRATION_LOOP: DO TIME_ITER = 1,MAX_CHEMISTRY_SUBSTEPS
 ENDDO INTEGRATION_LOOP
 
 
+IF(CHECK_ELEMENTAL_BALANCE) CALL PERFORM_ELEMENTAL_BALANCE(ZZ_GET,ZZ_0)
+
 ! Compute heat release rate
 
 Q_OUT = -RHO_IN*SUM(SPECIES_MIXTURE%H_F*(ZZ_GET-ZZ_0))/DT ! FDS Tech Guide (5.47)
@@ -1038,6 +1046,114 @@ IF (REAC_SOURCE_CHECK) THEN
 ENDIF
 
 END SUBROUTINE COMBUSTION_MODEL
+
+SUBROUTINE PERFORM_ELEMENTAL_BALANCE(ZZ_GET, ZZ_0)
+   USE PROPERTY_DATA
+   REAL(EB), INTENT(IN) :: ZZ_GET(N_TRACKED_SPECIES),ZZ_0(N_TRACKED_SPECIES)
+   
+   INTEGER :: NE, NS
+   INTEGER :: N_ELEMENTS
+   REAL(EB), ALLOCATABLE :: ZZ_ELEM_GET(:), ZZ_ELEM_0(:)
+   REAL(EB) :: DIFF
+   LOGICAL :: IMBALANCE_FOUND
+
+   !-------------------------------
+   ! Setup
+   !-------------------------------
+   N_ELEMENTS = 118
+
+   ALLOCATE(ZZ_ELEM_GET(N_ELEMENTS))
+   ALLOCATE(ZZ_ELEM_0(N_ELEMENTS))
+
+   ZZ_ELEM_GET = 0.0_EB
+   ZZ_ELEM_0   = 0.0_EB
+   IMBALANCE_FOUND = .FALSE.
+
+   !-------------------------------
+   ! Compute elemental mass fractions
+   !-------------------------------
+   DO NS = 1, N_TRACKED_SPECIES
+      DO NE = 1, N_ELEMENTS
+
+         ZZ_ELEM_GET(NE) = ZZ_ELEM_GET(NE) + &
+              ZZ_GET(NS) * SPECIES_MIXTURE(NS)%ATOMS(NE) * ELEMENT(NE)%MASS / &
+              SPECIES_MIXTURE(NS)%MW
+
+         ZZ_ELEM_0(NE) = ZZ_ELEM_0(NE) + &
+              ZZ_0(NS) * SPECIES_MIXTURE(NS)%ATOMS(NE) * ELEMENT(NE)%MASS / &
+              SPECIES_MIXTURE(NS)%MW
+
+      END DO
+   END DO
+
+   !-------------------------------
+   ! Compare elemental balances
+   !-------------------------------
+   DO NE = 1, N_ELEMENTS
+
+      IF (ZZ_ELEM_GET(NE) > 0.0_EB .OR. ZZ_ELEM_0(NE) > 0.0_EB) THEN
+
+         DIFF = ABS(ZZ_ELEM_GET(NE) - ZZ_ELEM_0(NE))
+
+         IF (DIFF > 1.0E-4_EB) THEN
+            IMBALANCE_FOUND = .TRUE.
+            !WRITE(*,'(A,I3,3E14.6)') 'Imbalance in element ', NE, &
+            !     ZZ_ELEM_GET(NE), ZZ_ELEM_0(NE), DIFF
+         END IF
+
+      END IF
+
+   END DO
+
+   !-------------------------------
+   ! Optional summary message
+   !-------------------------------
+   IF (IMBALANCE_FOUND) THEN
+
+      WRITE(LU_ERR,*) ' '
+      WRITE(LU_ERR,*) '*** Elemental conservation violated ***'
+      WRITE(LU_ERR,*) ' '
+
+      !---------------------------------------
+      ! Elemental mass fractions
+      !---------------------------------------
+      WRITE(LU_ERR,'(A)') 'Elemental mass fractions (GET vs 0):'
+      WRITE(LU_ERR,'(A)') '-------------------------------------'
+
+      DO NE = 1, N_ELEMENTS
+         IF (ZZ_ELEM_GET(NE) > 0.0_EB .OR. ZZ_ELEM_0(NE) > 0.0_EB) THEN
+            WRITE(LU_ERR,'(A4,3E16.8)') TRIM(ELEMENT(NE)%ABBREVIATION), &
+                 ZZ_ELEM_GET(NE), ZZ_ELEM_0(NE), &
+                 ZZ_ELEM_GET(NE) - ZZ_ELEM_0(NE)
+         END IF
+      END DO
+
+      !---------------------------------------
+      ! Species comparison
+      !---------------------------------------
+      WRITE(LU_ERR,*) ' '
+      WRITE(LU_ERR,'(A)') 'Species with differences (ZZ_GET vs ZZ_0):'
+      WRITE(LU_ERR,'(A)') '-------------------------------------------'
+
+      DO NS = 1, N_TRACKED_SPECIES
+         IF (ABS(ZZ_GET(NS) - ZZ_0(NS)) > 1.0E-8_EB) THEN
+            WRITE(LU_ERR,'(A20,3E16.8)') TRIM(SPECIES_MIXTURE(NS)%ID), &
+                 ZZ_GET(NS), ZZ_0(NS), ZZ_GET(NS) - ZZ_0(NS)
+         END IF
+      END DO
+
+      !---------------------------------------
+      ! Totals
+      !---------------------------------------
+      WRITE(LU_ERR,*) ' '
+      WRITE(LU_ERR,'(A,2E16.8)') 'Sum ZZ_GET, ZZ_0 = ', SUM(ZZ_GET), SUM(ZZ_0)
+
+   END IF
+
+   DEALLOCATE(ZZ_ELEM_GET, ZZ_ELEM_0)
+
+END SUBROUTINE PERFORM_ELEMENTAL_BALANCE
+
 
 !> \brief call cvode_interface after converting mass fraction to molar concentration.
 !> \param ZZ species mass fraction array
@@ -2257,6 +2373,254 @@ ENDIF
 RETURN
 
 END FUNCTION CALC_FCENT
+
+
+SUBROUTINE HANDLE_CUSTOM_TEST
+USE PHYSICAL_FUNCTIONS, ONLY: CALC_EQUIV_RATIO
+
+REAL(EB) :: ZZ(N_TRACKED_SPECIES),ZZ_MIXED(N_TRACKED_SPECIES),ATOL(N_TRACKED_SPECIES)
+REAL(EB) :: TMP_IN, TMP_UNMIX, PR_IN, ZETA0
+REAL(EB) :: TAU_MIX, CELL_MASS
+REAL(EB) :: TCUR, TEND
+REAL(EB) :: EQUIV, T, DT_SUB, ZETA_OUT
+INTEGER  :: INPUT_RANK, NS,IGN_ZN
+
+IF (TRIM(CUSTOM_TEST_TYPE) == 'CHEM') THEN
+   CALL READ_CVODE_TEST_DATA(ZZ, TMP_IN, TMP_UNMIX, PR_IN, ZETA0, &
+                             TAU_MIX, CELL_MASS, TCUR, TEND, INPUT_RANK)
+
+   CALL CALC_EQUIV_RATIO(ZZ, EQUIV)
+
+   WRITE(LU_ERR,*) 'INPUT RANK =', INPUT_RANK
+   WRITE(LU_ERR,*) 'EQUIV      =', EQUIV
+
+   ZZ_MIXED = ZZ
+   IGN_ZN = 0
+   DT_SUB   = TEND - TCUR
+   T = 0._EB
+
+   DO NS =1,N_TRACKED_SPECIES
+      ATOL(NS) = DBLE(SPECIES_MIXTURE(NS)%ODE_ABS_ERROR)
+   ENDDO
+
+   CALL CVODE(ZZ_MIXED,TMP_IN,PR_IN,ZETA0, ZETA_OUT,TAU_MIX,CELL_MASS,IGN_ZN,T,DT_SUB,GLOBAL_ODE_REL_ERROR, ATOL)
+   
+   WRITE(LU_ERR,*) 'CVODE calculation complete.'
+   
+   DO NS = 1, N_TRACKED_SPECIES
+      !IF (ZZ_MIXED(NS) > 1.E-12_EB) THEN
+         WRITE(LU_ERR,*) 'ID, Y=', SPECIES_MIXTURE(NS)%ID, ZZ_MIXED(NS)
+      !END IF
+   END DO
+
+ELSE
+   WRITE(LU_ERR,*) 'UNKNOWN CUSTOM_TEST_TYPE:', TRIM(CUSTOM_TEST_TYPE)
+END IF
+
+END SUBROUTINE HANDLE_CUSTOM_TEST
+
+
+SUBROUTINE READ_CVODE_TEST_DATA(ZZ, TMP_IN, TMP_UNMIX, PR_IN, ZETA0, &
+                                TAU_MIX, CELL_MASS, TCUR, TEND, INPUT_RANK)
+
+REAL(EB), INTENT(OUT) :: ZZ(N_TRACKED_SPECIES)
+REAL(EB), INTENT(OUT) :: TMP_IN, TMP_UNMIX, PR_IN, ZETA0
+REAL(EB), INTENT(OUT) :: TAU_MIX, CELL_MASS
+REAL(EB), INTENT(OUT) :: TCUR, TEND
+INTEGER,  INTENT(OUT) :: INPUT_RANK
+
+INTEGER :: NS, IOS, EQ_POS
+INTEGER :: FIRST_POS, SPECIES_START, VALUE_START, LINE_END
+INTEGER :: RANK_READ
+REAL(EB) :: Y_READ, EQUIV_READ
+CHARACTER(LEN=512) :: LINE, WORK
+CHARACTER(LEN=80)  :: SPECIES_NAME
+LOGICAL :: FOUND
+
+! Initialize outputs
+ZZ          = 0._EB
+TMP_IN      = 0._EB
+TMP_UNMIX   = 0._EB
+PR_IN       = 0._EB
+ZETA0       = 0._EB
+TAU_MIX     = 0._EB
+CELL_MASS   = 0._EB
+TCUR        = 0._EB
+TEND        = 0._EB
+EQUIV_READ  = 0._EB
+INPUT_RANK  = -1
+
+OPEN(UNIT=20, FILE='test_zz.txt', STATUS='OLD', ACTION='READ', IOSTAT=IOS)
+
+IF (IOS /= 0) THEN
+   WRITE(LU_ERR,*) 'ERROR: COULD NOT OPEN test_zz.txt'
+   RETURN
+END IF
+
+DO
+
+   READ(20,'(A)',IOSTAT=IOS) LINE
+   IF (IOS /= 0) EXIT
+
+   IF (LEN_TRIM(LINE) == 0) CYCLE
+
+   WORK = LINE
+
+   ! Remove an accidental period after the last numerical value, for example:
+   ! 1.912294163688830E-003.
+   LINE_END = LEN_TRIM(WORK)
+   IF (LINE_END > 0) THEN
+      IF (WORK(LINE_END:LINE_END) == '.') WORK(LINE_END:LINE_END) = ' '
+   END IF
+
+   !============================================================
+   ! Species record:
+   !
+   ! MY_RANK,ID, Y= 149 NITROGEN             0.69818
+   !============================================================
+
+   IF (INDEX(WORK,'MY_RANK,ID, Y=') > 0) THEN
+
+      EQ_POS = INDEX(WORK,'=')
+      IF (EQ_POS == 0) CYCLE
+
+      ! Find beginning of rank
+      FIRST_POS = EQ_POS + 1
+      DO WHILE (FIRST_POS <= LEN_TRIM(WORK))
+         IF (WORK(FIRST_POS:FIRST_POS) /= ' ') EXIT
+         FIRST_POS = FIRST_POS + 1
+      END DO
+
+      ! Read rank
+      READ(WORK(FIRST_POS:),*,IOSTAT=IOS) RANK_READ
+      IF (IOS /= 0) THEN
+         WRITE(LU_ERR,*) 'ERROR READING RANK FROM: ', TRIM(WORK)
+         CYCLE
+      END IF
+
+      INPUT_RANK = RANK_READ
+
+      ! Move past rank
+      SPECIES_START = FIRST_POS
+      DO WHILE (SPECIES_START <= LEN_TRIM(WORK))
+         IF (WORK(SPECIES_START:SPECIES_START) == ' ') EXIT
+         SPECIES_START = SPECIES_START + 1
+      END DO
+
+      ! Skip spaces between rank and species name
+      DO WHILE (SPECIES_START <= LEN_TRIM(WORK))
+         IF (WORK(SPECIES_START:SPECIES_START) /= ' ') EXIT
+         SPECIES_START = SPECIES_START + 1
+      END DO
+
+      ! Find the final numerical token by searching backward
+      LINE_END = LEN_TRIM(WORK)
+      VALUE_START = LINE_END
+
+      DO WHILE (VALUE_START > SPECIES_START)
+         IF (WORK(VALUE_START-1:VALUE_START-1) == ' ') EXIT
+         VALUE_START = VALUE_START - 1
+      END DO
+
+      SPECIES_NAME = ADJUSTL(WORK(SPECIES_START:VALUE_START-1))
+
+      READ(WORK(VALUE_START:LINE_END),*,IOSTAT=IOS) Y_READ
+      IF (IOS /= 0) THEN
+         WRITE(LU_ERR,*) 'ERROR READING MASS FRACTION FROM: ', TRIM(WORK)
+         CYCLE
+      END IF
+
+      FOUND = .FALSE.
+
+      DO NS = 1, N_TRACKED_SPECIES
+         IF (TRIM(SPECIES_MIXTURE(NS)%ID) == TRIM(SPECIES_NAME)) THEN
+            ZZ(NS) = Y_READ
+            FOUND = .TRUE.
+            EXIT
+         END IF
+      END DO
+
+      IF (.NOT. FOUND) THEN
+         WRITE(LU_ERR,*) 'WARNING: SPECIES NOT FOUND: ', TRIM(SPECIES_NAME)
+      END IF
+
+      CYCLE
+
+   END IF
+
+   !============================================================
+   ! Scalar records
+   !============================================================
+
+   EQ_POS = INDEX(WORK,'=')
+   IF (EQ_POS == 0) CYCLE
+
+   IF (INDEX(WORK,'EQUIVALENCE RATIO') > 0) THEN
+
+      READ(WORK(EQ_POS+1:),*,IOSTAT=IOS) RANK_READ, EQUIV_READ, TMP_IN
+
+   ELSEIF (INDEX(WORK,'TMP_UNMIX') > 0) THEN
+
+      READ(WORK(EQ_POS+1:),*,IOSTAT=IOS) RANK_READ, TMP_UNMIX
+
+   ELSEIF (INDEX(WORK,'PR_IN') > 0) THEN
+
+      READ(WORK(EQ_POS+1:),*,IOSTAT=IOS) RANK_READ, PR_IN
+
+   ELSEIF (INDEX(WORK,'ZETA0') > 0) THEN
+
+      READ(WORK(EQ_POS+1:),*,IOSTAT=IOS) RANK_READ, ZETA0
+
+   ELSEIF (INDEX(WORK,'TAU_MIX') > 0) THEN
+
+      READ(WORK(EQ_POS+1:),*,IOSTAT=IOS) RANK_READ, TAU_MIX
+
+   ELSEIF (INDEX(WORK,'CELL_MASS') > 0) THEN
+
+      READ(WORK(EQ_POS+1:),*,IOSTAT=IOS) RANK_READ, CELL_MASS
+
+   ELSEIF (INDEX(WORK,'TCUR') > 0) THEN
+
+      READ(WORK(EQ_POS+1:),*,IOSTAT=IOS) RANK_READ, TCUR
+
+   ELSEIF (INDEX(WORK,'TEND') > 0) THEN
+
+      READ(WORK(EQ_POS+1:),*,IOSTAT=IOS) RANK_READ, TEND
+   ELSE
+
+      CYCLE
+
+   END IF
+
+   IF (IOS /= 0) THEN
+      WRITE(LU_ERR,*) 'ERROR READING SCALAR LINE: ', TRIM(WORK)
+   ELSE
+      INPUT_RANK = RANK_READ
+   END IF
+
+END DO
+
+CLOSE(20)
+
+! Check the input mass fractions
+IF (ABS(SUM(ZZ)-1._EB) > 1.E-6_EB) THEN
+   WRITE(LU_ERR,*) 'WARNING: ZZ DOES NOT SUM TO 1: ', SUM(ZZ)
+END IF
+
+WRITE(LU_ERR,*) 'INPUT_RANK =', INPUT_RANK
+WRITE(LU_ERR,*) 'SUM(ZZ)    =', SUM(ZZ)
+WRITE(LU_ERR,*) 'EQUIV      =', EQUIV_READ
+WRITE(LU_ERR,*) 'TMP_IN     =', TMP_IN
+WRITE(LU_ERR,*) 'TMP_UNMIX  =', TMP_UNMIX
+WRITE(LU_ERR,*) 'PR_IN      =', PR_IN
+WRITE(LU_ERR,*) 'ZETA0      =', ZETA0
+WRITE(LU_ERR,*) 'TAU_MIX    =', TAU_MIX
+WRITE(LU_ERR,*) 'CELL_MASS  =', CELL_MASS
+WRITE(LU_ERR,*) 'TCUR       =', TCUR
+WRITE(LU_ERR,*) 'TEND       =', TEND
+
+
+END SUBROUTINE READ_CVODE_TEST_DATA
 
 END MODULE FIRE
 
