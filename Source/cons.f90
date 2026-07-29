@@ -375,6 +375,7 @@ REAL(EB), PARAMETER :: K_BOLTZMANN=1.3806488E-23_EB         !< Parameter in soot
 REAL(EB), PARAMETER :: EARTH_OMEGA=7.272205216643040e-05_EB !< Earth rotation rate [radians/s] = 2*pi/(24*3600)
 REAL(EB), PARAMETER :: VON_KARMAN_CONSTANT=0.41_EB          !< von Karman constant
 REAL(EB), PARAMETER :: BTILDE_ROUGH=8.5_EB                  !< Fully rough B(s+) in wall model
+INTEGER,  PARAMETER :: N_ELEMENTS=118                       !< Number of fundamental elements 
 
 ! Parameters associated with parallel mode
 
@@ -945,7 +946,7 @@ REAL(EB) :: ZETA_FIRST_STEP_DIV=10._EB
 INTEGER :: N_IGNITION_ZONES = 0
 TYPE(IGNITION_ZONE_TYPE), DIMENSION(MAX_IGNITION_ZONES) :: IGNITION_ZONES !< Coordinates of ignition zones
 
-LOGICAL  :: CHECK_ELEMENTAL_BALANCE = .FALSE.
+LOGICAL  :: ENABLE_ELEMENT_BALANCE_CHECK = .FALSE.
 
 CONTAINS
    SUBROUTINE INIT_CVODE_WARN_MESSAGES()

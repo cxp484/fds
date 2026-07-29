@@ -777,7 +777,7 @@ USE MATH_FUNCTIONS, ONLY: EVALUATE_RAMP
 USE PHYSICAL_FUNCTIONS, ONLY: GET_REALIZABLE_MF
 USE TURBULENCE, ONLY: K_SGS_POPE
 USE COMP_FUNCTIONS, ONLY: SHUTDOWN
-USE CHEMCONS, ONLY: ODE_MIN_ATOL,CHECK_ELEMENTAL_BALANCE
+USE CHEMCONS, ONLY: ODE_MIN_ATOL,ENABLE_ELEMENT_BALANCE_CHECK
 INTEGER, INTENT(IN) :: IGN_ZN
 INTEGER, INTENT(IN), OPTIONAL :: IIC,JJC,KKC
 REAL(EB), INTENT(IN) :: T,DT,RHO_IN,PRES_IN,MU_IN,DELTA,CELL_VOLUME,ZETA_0_IN
@@ -993,7 +993,7 @@ INTEGRATION_LOOP: DO TIME_ITER = 1,MAX_CHEMISTRY_SUBSTEPS
 ENDDO INTEGRATION_LOOP
 
 
-IF(CHECK_ELEMENTAL_BALANCE) CALL PERFORM_ELEMENTAL_BALANCE(ZZ_GET,ZZ_0)
+IF(ENABLE_ELEMENT_BALANCE_CHECK .AND. VERBOSE) CALL CHECK_ELEMENT_BALANCE(ZZ_GET,ZZ_0)
 
 ! Compute heat release rate
 
@@ -1047,112 +1047,49 @@ ENDIF
 
 END SUBROUTINE COMBUSTION_MODEL
 
-SUBROUTINE PERFORM_ELEMENTAL_BALANCE(ZZ_GET, ZZ_0)
+!> \brief This subroutine check elemental balance of a mixture (ZZ) before and after chemistry call.
+SUBROUTINE CHECK_ELEMENT_BALANCE(ZZ_NEW, ZZ_OLD)
    USE PROPERTY_DATA
-   REAL(EB), INTENT(IN) :: ZZ_GET(N_TRACKED_SPECIES),ZZ_0(N_TRACKED_SPECIES)
-   
+   REAL(EB), INTENT(IN) :: ZZ_NEW(N_TRACKED_SPECIES), ZZ_OLD(N_TRACKED_SPECIES)
+
    INTEGER :: NE, NS
-   INTEGER :: N_ELEMENTS
-   REAL(EB), ALLOCATABLE :: ZZ_ELEM_GET(:), ZZ_ELEM_0(:)
-   REAL(EB) :: DIFF
-   LOGICAL :: IMBALANCE_FOUND
+   REAL(EB) :: ELEM_NEW(N_ELEMENTS), ELEM_OLD(N_ELEMENTS), FACTOR
+   REAL(EB), PARAMETER :: TOL_ELEM=1.E-3_EB, TOL_SPECIES=1.E-6_EB
 
-   !-------------------------------
-   ! Setup
-   !-------------------------------
-   N_ELEMENTS = 118
+   ELEM_NEW = 0._EB
+   ELEM_OLD = 0._EB
 
-   ALLOCATE(ZZ_ELEM_GET(N_ELEMENTS))
-   ALLOCATE(ZZ_ELEM_0(N_ELEMENTS))
-
-   ZZ_ELEM_GET = 0.0_EB
-   ZZ_ELEM_0   = 0.0_EB
-   IMBALANCE_FOUND = .FALSE.
-
-   !-------------------------------
-   ! Compute elemental mass fractions
-   !-------------------------------
    DO NS = 1, N_TRACKED_SPECIES
       DO NE = 1, N_ELEMENTS
-
-         ZZ_ELEM_GET(NE) = ZZ_ELEM_GET(NE) + &
-              ZZ_GET(NS) * SPECIES_MIXTURE(NS)%ATOMS(NE) * ELEMENT(NE)%MASS / &
-              SPECIES_MIXTURE(NS)%MW
-
-         ZZ_ELEM_0(NE) = ZZ_ELEM_0(NE) + &
-              ZZ_0(NS) * SPECIES_MIXTURE(NS)%ATOMS(NE) * ELEMENT(NE)%MASS / &
-              SPECIES_MIXTURE(NS)%MW
-
+         FACTOR = SPECIES_MIXTURE(NS)%ATOMS(NE) * ELEMENT(NE)%MASS / &
+                  SPECIES_MIXTURE(NS)%MW
+         ELEM_NEW(NE) = ELEM_NEW(NE) + ZZ_NEW(NS) * FACTOR
+         ELEM_OLD(NE) = ELEM_OLD(NE) + ZZ_OLD(NS) * FACTOR
       END DO
    END DO
 
-   !-------------------------------
-   ! Compare elemental balances
-   !-------------------------------
+   IF (.NOT. ANY(ABS(ELEM_NEW-ELEM_OLD) > TOL_ELEM)) RETURN
+
+   WRITE(LU_ERR,'(/,A,/)') '*** Elemental conservation violated ***'
+   WRITE(LU_ERR,'(A)') 'Element               NEW             OLD      DIFFERENCE'
+
    DO NE = 1, N_ELEMENTS
-
-      IF (ZZ_ELEM_GET(NE) > 0.0_EB .OR. ZZ_ELEM_0(NE) > 0.0_EB) THEN
-
-         DIFF = ABS(ZZ_ELEM_GET(NE) - ZZ_ELEM_0(NE))
-
-         IF (DIFF > 1.0E-4_EB) THEN
-            IMBALANCE_FOUND = .TRUE.
-            !WRITE(*,'(A,I3,3E14.6)') 'Imbalance in element ', NE, &
-            !     ZZ_ELEM_GET(NE), ZZ_ELEM_0(NE), DIFF
-         END IF
-
-      END IF
-
+      IF (ABS(ELEM_NEW(NE)-ELEM_OLD(NE)) > TOL_ELEM) &
+         WRITE(LU_ERR,'(A8,3E16.8)') TRIM(ELEMENT(NE)%ABBREVIATION), &
+            ELEM_NEW(NE), ELEM_OLD(NE), ELEM_NEW(NE)-ELEM_OLD(NE)
    END DO
 
-   !-------------------------------
-   ! Optional summary message
-   !-------------------------------
-   IF (IMBALANCE_FOUND) THEN
+   WRITE(LU_ERR,'(/,A)') 'Species               NEW             OLD      DIFFERENCE'
 
-      WRITE(LU_ERR,*) ' '
-      WRITE(LU_ERR,*) '*** Elemental conservation violated ***'
-      WRITE(LU_ERR,*) ' '
+   DO NS = 1, N_TRACKED_SPECIES
+      IF (ABS(ZZ_NEW(NS)-ZZ_OLD(NS)) > TOL_SPECIES) &
+         WRITE(LU_ERR,'(A20,3E16.8)') TRIM(SPECIES_MIXTURE(NS)%ID), &
+            ZZ_NEW(NS), ZZ_OLD(NS), ZZ_NEW(NS)-ZZ_OLD(NS)
+   END DO
 
-      !---------------------------------------
-      ! Elemental mass fractions
-      !---------------------------------------
-      WRITE(LU_ERR,'(A)') 'Elemental mass fractions (GET vs 0):'
-      WRITE(LU_ERR,'(A)') '-------------------------------------'
+   WRITE(LU_ERR,'(/,A,2E16.8)') 'Sum ZZ_NEW, ZZ_OLD = ', SUM(ZZ_NEW), SUM(ZZ_OLD)
 
-      DO NE = 1, N_ELEMENTS
-         IF (ZZ_ELEM_GET(NE) > 0.0_EB .OR. ZZ_ELEM_0(NE) > 0.0_EB) THEN
-            WRITE(LU_ERR,'(A4,3E16.8)') TRIM(ELEMENT(NE)%ABBREVIATION), &
-                 ZZ_ELEM_GET(NE), ZZ_ELEM_0(NE), &
-                 ZZ_ELEM_GET(NE) - ZZ_ELEM_0(NE)
-         END IF
-      END DO
-
-      !---------------------------------------
-      ! Species comparison
-      !---------------------------------------
-      WRITE(LU_ERR,*) ' '
-      WRITE(LU_ERR,'(A)') 'Species with differences (ZZ_GET vs ZZ_0):'
-      WRITE(LU_ERR,'(A)') '-------------------------------------------'
-
-      DO NS = 1, N_TRACKED_SPECIES
-         IF (ABS(ZZ_GET(NS) - ZZ_0(NS)) > 1.0E-8_EB) THEN
-            WRITE(LU_ERR,'(A20,3E16.8)') TRIM(SPECIES_MIXTURE(NS)%ID), &
-                 ZZ_GET(NS), ZZ_0(NS), ZZ_GET(NS) - ZZ_0(NS)
-         END IF
-      END DO
-
-      !---------------------------------------
-      ! Totals
-      !---------------------------------------
-      WRITE(LU_ERR,*) ' '
-      WRITE(LU_ERR,'(A,2E16.8)') 'Sum ZZ_GET, ZZ_0 = ', SUM(ZZ_GET), SUM(ZZ_0)
-
-   END IF
-
-   DEALLOCATE(ZZ_ELEM_GET, ZZ_ELEM_0)
-
-END SUBROUTINE PERFORM_ELEMENTAL_BALANCE
+END SUBROUTINE CHECK_ELEMENT_BALANCE
 
 
 !> \brief call cvode_interface after converting mass fraction to molar concentration.
@@ -1170,7 +1107,7 @@ END SUBROUTINE PERFORM_ELEMENTAL_BALANCE
 
 #ifdef WITH_SUNDIALS
 SUBROUTINE CVODE(ZZ, TMP_IN, PRES_IN,  ZETA_IN, ZETA_OUT, TAU_MIX, CELL_MASS, IGN_ZN, T_CFD, DT, GLOBAL_ODE_REL_ERROR, ATOL)
-USE PHYSICAL_FUNCTIONS, ONLY :  GET_MOLECULAR_WEIGHT
+USE PHYSICAL_FUNCTIONS, ONLY :  GET_MOLECULAR_WEIGHT,GET_ENTHALPY,GET_TEMPERATURE,CALC_EQUIV_RATIO
 USE CHEMCONS, ONLY: WRITE_CVODE_SUBSTEPS, ZETA_ARTIFICAL_MAX_LIMIT,ZETA_ARTIFICAL_MIN_LIMIT, ZETA_FIRST_STEP_DIV,&
                     USE_MIXED_ZN_AFT_TMP,MIXING_ZN_TMP_LIMIT
 REAL(EB), INTENT(INOUT) :: ZZ(N_TRACKED_SPECIES)
@@ -1180,8 +1117,9 @@ REAL(EB), INTENT(OUT) ::ZETA_OUT
 INTEGER, INTENT(IN) :: IGN_ZN
 
 REAL(EB) :: CC(N_TRACKED_SPECIES), CC_CHEM_TIME(N_TRACKED_SPECIES), ZZ_IN(N_TRACKED_SPECIES)
-REAL(EB) :: MW, RHO_IN, RHO_OUT, T1, T2, ZETA0, ZETA_IN_MOD, TMP_IN_MOD, TMP_OUT, &
+REAL(EB) :: MW, RHO_IN, RHO_OUT, T1, T2, ZETA0, ZETA_IN_MOD, TMP_OUT, &
             CHEM_TIME, DT_MOD, ZETA_ARTF, ZETA_FINAL, ZETA_MAX_LIMIT, ZETA_MIN_LIMIT,AFT
+REAL(EB) :: TMP_MIX, TMP_UNMIX, HS_MIX, HS_UNMIX, HS_TOT, EQUIV
 INTEGER :: NS, CVODE_CALL_OPTION
 LOGICAL :: WRITE_SUBSTEPS, CALL_CHEM_AGAIN
 
@@ -1189,19 +1127,44 @@ CVODE_CALL_OPTION = 1 ! CV_NORMAL
 WRITE_SUBSTEPS = .FALSE.
 DT_MOD = DT
 ZETA_IN_MOD = ZETA_IN
-TMP_IN_MOD = TMP_IN
+TMP_MIX = TMP_IN
+TMP_UNMIX = TMP_IN
 CALL_CHEM_AGAIN = .FALSE.
 
 IF(IGN_ZN > 0) THEN
    CALL CALC_ADIABATIC_FLAME_TEMPERATURE(ZZ,TMP_IN,AFT)
-   TMP_IN_MOD = MAX(TMP_IN,AFT)
+   TMP_MIX = MAX(TMP_IN,AFT)
    ZETA_IN_MOD = 0.0_EB
 ELSE
    IF (SIM_MODE .NE. DNS_MODE .AND. USE_MIXED_ZN_AFT_TMP) THEN
       CALL CALC_ADIABATIC_FLAME_TEMPERATURE(ZZ,TMP_IN,AFT)
       IF (AFT < FINITE_RATE_MIN_TEMP) RETURN
-      !TMP_IN_MOD = MAX(TMP_IN,AFT)
-      TMP_IN_MOD = MAX(MIN(AFT,MIXING_ZN_TMP_LIMIT),TMP_IN)
+      !TMP_MIX = MAX(TMP_IN,AFT)
+      TMP_MIX = MAX(MIN(AFT,MIXING_ZN_TMP_LIMIT),TMP_IN)
+
+      ! Calculate TMP_UNMIX based on energy balance
+      IF (ZETA_IN_MOD > TWO_EPSILON_EB) THEN
+         CALL GET_ENTHALPY(ZZ,HS_TOT,TMP_IN)
+         CALL GET_ENTHALPY(ZZ,HS_MIX,TMP_MIX)
+         HS_UNMIX = (HS_TOT-(1.0_EB-ZETA_IN_MOD)*HS_MIX)/(ZETA_IN_MOD+TWO_EPSILON_EB)
+         CALL GET_TEMPERATURE(TMP_UNMIX,HS_UNMIX,ZZ)
+         IF (TMP_UNMIX < 250._EB) THEN
+            CALL CALC_EQUIV_RATIO(ZZ(1:N_TRACKED_SPECIES),EQUIV)
+
+            WRITE(LU_ERR,*) 'Low TMP_UNMIX: rank, TMP_IN, TMP_MIX, ', &
+                            'TMP_UNMIX, ZETA, EQUIV = ',              &
+                            MY_RANK,TMP_IN,TMP_MIX,TMP_UNMIX,         &
+                            ZETA_IN_MOD,EQUIV
+
+            DO NS = 1,N_TRACKED_SPECIES
+               WRITE(LU_ERR,*) 'Rank, species, Y = ',                 &
+                  MY_RANK,TRIM(SPECIES_MIXTURE(NS)%ID),ZZ(NS)
+            ENDDO
+         ENDIF
+         TMP_UNMIX=MAX(200._EB,TMP_UNMIX)
+      ELSE
+         TMP_UNMIX = TMP_IN
+      ENDIF
    ENDIF   
 ENDIF
 ZETA_OUT = ZETA_IN_MOD*EXP(-DT/TAU_MIX)
@@ -1211,7 +1174,7 @@ CC = 0._EB
 
 ! Calculate RHO based on mixing zone temperature.
 CALL GET_MOLECULAR_WEIGHT(ZZ,MW)
-RHO_IN = PRES_IN*MW/R0/TMP_IN_MOD ! [PR]= Pa, [MW] = g/mol, [R0]= J/K/kmol, [TMP]=K, [RHO]= kg/m3
+RHO_IN = PRES_IN*MW/R0/TMP_MIX ! [PR]= Pa, [MW] = g/mol, [R0]= J/K/kmol, [TMP]=K, [RHO]= kg/m3
 DO NS =1,N_TRACKED_SPECIES
   CC(NS) = RHO_IN*ZZ(NS)/SPECIES_MIXTURE(NS)%MW  ! [RHO]= kg/m3, [MW] = g/mol = kg/kmol, [CC] = kmol/m3
 ENDDO
@@ -1229,7 +1192,7 @@ IF(ZETA_IN_MOD > ONE_M_EPS) THEN
    CVODE_CALL_OPTION = 2 ! CV_ONE_STEP
    CUR_CFD_TIME = T_CFD ! Set current cfd time in cvode, for logging purpose.
    CC_CHEM_TIME(1:N_TRACKED_SPECIES)=CC(1:N_TRACKED_SPECIES)
-   CALL CVODE_SERIAL(CC_CHEM_TIME,ZZ, TMP_IN_MOD, TMP_IN, PRES_IN, ZETA0, TAU_MIX, CELL_MASS, T1,T2,  &
+   CALL CVODE_SERIAL(CC_CHEM_TIME,ZZ, TMP_MIX, TMP_UNMIX, PRES_IN, ZETA0, TAU_MIX, CELL_MASS, T1,T2,  &
                       GLOBAL_ODE_REL_ERROR, ATOL, TMP_OUT, CHEM_TIME, WRITE_SUBSTEPS, CVODE_CALL_OPTION) ! Find the chem time scale
    ! Check 1) too much artificial mixing (low zeta after first step) or 
    ! 2) too little mixing (high zeta after first step) to avoid steep problem in cvode.
@@ -1252,13 +1215,13 @@ IF(ZETA_IN_MOD > ONE_M_EPS) THEN
       ZETA0 = 0._EB ! Assume completely mixed.
       CVODE_CALL_OPTION = 1 ! CV_NORMAL
       CUR_CFD_TIME = T_CFD ! Set current cfd time in cvode, for logging purpose.
-      CALL CVODE_SERIAL(CC,ZZ, TMP_IN_MOD, TMP_IN, PRES_IN, ZETA0, TAU_MIX, CELL_MASS, T1,T2,  &
+      CALL CVODE_SERIAL(CC,ZZ, TMP_MIX, TMP_UNMIX, PRES_IN, ZETA0, TAU_MIX, CELL_MASS, T1,T2,  &
                          GLOBAL_ODE_REL_ERROR, ATOL, TMP_OUT, CHEM_TIME, WRITE_SUBSTEPS, CVODE_CALL_OPTION)
       CHEM_TIME = T2
    ELSE
       CC(1:N_TRACKED_SPECIES)=CC_CHEM_TIME(1:N_TRACKED_SPECIES)
    ENDIF
-   TMP_IN_MOD = TMP_OUT
+   TMP_MIX = TMP_OUT
    ZETA0 = ZETA_IN_MOD*EXP(-CHEM_TIME/TAU_MIX)
    DT_MOD = DT_MOD - CHEM_TIME
 ELSE
@@ -1276,7 +1239,7 @@ T1 = 0._EB
 T2 = DT_MOD
 CUR_CFD_TIME = T_CFD ! Set current cfd time in cvode, for logging purpose.
 ZZ_IN = ZZ
-CALL  CVODE_SERIAL(CC,ZZ, TMP_IN_MOD, TMP_IN, PRES_IN, ZETA0, TAU_MIX, CELL_MASS, T1,T2, GLOBAL_ODE_REL_ERROR, ATOL, &
+CALL  CVODE_SERIAL(CC,ZZ, TMP_MIX, TMP_UNMIX, PRES_IN, ZETA0, TAU_MIX, CELL_MASS, T1,T2, GLOBAL_ODE_REL_ERROR, ATOL, &
                    TMP_OUT, CHEM_TIME, WRITE_SUBSTEPS, CVODE_CALL_OPTION)
 
 
