@@ -5542,6 +5542,12 @@ IF(TRIM(ODE_SOLVER)=='CVODE') THEN
       ENDIF
    ENDDO
 
+   IF (SIM_MODE /= DNS_MODE .AND. MIN(I_FUEL,I_O2,I_CO2,I_CO,I_H2O,I_H2) < 1) THEN
+      WRITE(MESSAGE,'(3A)') 'ERROR(*): Fuel (',TRIM(FUEL_ID_FOR_AFT), &
+                           '), O2, CO2, CO, H2O and H2 must be tracked species for LES with CVODE.'
+      CALL SHUTDOWN(MESSAGE) ; RETURN
+   ENDIF
+
 ENDIF
 
 END SUBROUTINE PROC_REAC_1
