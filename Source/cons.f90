@@ -477,6 +477,9 @@ LOGICAL, ALLOCATABLE, DIMENSION(:) :: RADIATION_COMPLETED  !< Indicates that the
 
 LOGICAL :: RANDOMIZE_RADIATION_DIRECTIONS=.FALSE.           !< If TRUE, randomly rotate solid angles each full RTE solve
 LOGICAL :: ALLOW_RANDOM_RADIATION_ROTATION=.FALSE.         !< A derived variable, to block random rotation fo cyl and 2d cases
+LOGICAL :: NNET_PL10=.FALSE.                               !< Use the ONNX RadCal PL10 neural-network absorption model
+LOGICAL :: RADCAL_DIRECT=.FALSE.                           !< Evaluate the RadCal model directly for each gas cell
+LOGICAL :: DUMP_KAPPA_MODELS=.FALSE.                       !< Write lookup, NN, and direct RadCal kappa for every gas-cell call
 
 INTEGER :: NUMBER_SPECTRAL_BANDS=0                         !< Number of wavelength bands for rad solver (1 for gray gas)
 INTEGER :: NUMBER_RADIATION_ANGLES=0                       !< Number of solid angles over which radiation is solved

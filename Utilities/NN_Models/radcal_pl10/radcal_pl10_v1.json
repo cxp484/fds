@@ -1,0 +1,61 @@
+{
+  "model_id": "radcal-pl10",
+  "model_version": "1.0.0",
+  "format": "onnx",
+  "model_file": "radcal_pl10_v1.onnx",
+  "sha256": "42ca145ae77c48dcd916df098166df24d2ea3dc380001560059f8a32c20901c2",
+  "input": {
+    "tensor_name": "radiation_features",
+    "shape": [
+      "batch",
+      6
+    ],
+    "features": [
+      "temperature_K",
+      "x_co2",
+      "x_h2o",
+      "x_co",
+      "x_c2h4",
+      "soot_fv"
+    ],
+    "units": [
+      "K",
+      "1",
+      "1",
+      "1",
+      "1",
+      "1"
+    ],
+    "normalization": "embedded_zscore",
+    "normalization_parameters": {
+      "normalization_mean": [
+        1376.2857666015625,
+        0.10157117992639542,
+        0.10157117992639542,
+        0.10157117992639542,
+        0.10157117992639542,
+        0.017716417089104652
+      ],
+      "normalization_variance": [
+        389904.25,
+        0.05292102321982384,
+        0.05292102321982384,
+        0.05292102321982384,
+        0.05292102321982384,
+        0.001974419690668583
+      ]
+    }
+  },
+  "output": {
+    "tensor_name": "kappa_10cm_cm_1",
+    "shape": [
+      "batch",
+      1
+    ],
+    "quantity": "direct_radcal_kappa_10cm",
+    "units": "cm^-1",
+    "fds_units": "m^-1",
+    "fds_scale_factor": 100.0,
+    "supported_radiation_bands": 1
+  }
+}
