@@ -124,8 +124,8 @@ ifdef HYPRE_HOME # This assumes the HYPRE library is available.
 endif
 
 # Optional ONNX Runtime support. Set ONNXRUNTIME_HOME to an installation that
-# provides include/onnxruntime_cxx_api.h and lib/libonnxruntime.so. This is
-# currently enabled for the impi_intel_linux_db target below.
+# provides include/onnxruntime_cxx_api.h and lib/libonnxruntime (shared
+# library extension is platform-dependent).
 ifdef ONNXRUNTIME_HOME
    FFLAGS_ONNX = -DWITH_ONNX_RUNTIME
    CXXFLAGS_ONNX = -std=c++14 -DWITH_ONNX_RUNTIME -I$(ONNXRUNTIME_HOME)/include -I.
@@ -145,6 +145,8 @@ obj_mpi = prec.o cons.o chem.o prop.o devc.o type.o data.o mesh.o func.o gsmv.o 
 objwin_mpi = $(obj_mpi:.o=.obj)
 obj_impi_intel_linux = $(obj_mpi) $(obj_nnet_onnx)
 obj_impi_intel_linux_db = $(obj_mpi) $(obj_nnet_onnx)
+obj_ompi_gnu_osx = $(obj_mpi) $(obj_nnet_onnx)
+obj_ompi_gnu_osx_db = $(obj_mpi) $(obj_nnet_onnx)
 
 # General Purpose Rules
 
@@ -403,21 +405,25 @@ ompi_gnu_linux_dv : setup $(obj_mpi)
 
 ompi_gnu_osx : FFLAGS = -O3 -std=f2018 -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(FFLAGSMKL) $(GFORTRAN_OPTIONS) $(FFLAGS_HYPRE) $(FFLAGS_SUNDIALS)
 ompi_gnu_osx : LFLAGSMKL = $(LFLAGSMKL_CUSTOM) $(CLT_VERSION) $(LFLAGS_HYPRE) $(LFLAGS_SUNDIALS)
+ompi_gnu_osx : FFLAGS += $(FFLAGS_ONNX)
+ompi_gnu_osx : LFLAGSMKL += $(LFLAGS_ONNX)
 ompi_gnu_osx : LFLAGS = -static-libgfortran -static-libquadmath
 ompi_gnu_osx : FCOMPL = $(COMP_FC)
 ompi_gnu_osx : FOPENMPFLAGS = -fopenmp 
 ompi_gnu_osx : obj = fds_ompi_gnu_osx
-ompi_gnu_osx : setup $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL) $(LFLAGS)
+ompi_gnu_osx : setup $(obj_ompi_gnu_osx)
+	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_ompi_gnu_osx) $(LFLAGSMKL) $(LFLAGS)
 
 ompi_gnu_osx_db : FFLAGS = -O0 -std=f2018 -ggdb -Wall -Wcharacter-truncation -Wno-target-lifetime -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(FFLAGSMKL) $(GFORTRAN_OPTIONS) $(FFLAGS_HYPRE) $(FFLAGS_SUNDIALS)
 ompi_gnu_osx_db : LFLAGSMKL = $(LFLAGSMKL_CUSTOM) $(CLT_VERSION) $(LFLAGS_HYPRE) $(LFLAGS_SUNDIALS)
+ompi_gnu_osx_db : FFLAGS += $(FFLAGS_ONNX)
+ompi_gnu_osx_db : LFLAGSMKL += $(LFLAGS_ONNX)
 ompi_gnu_osx_db : LFLAGS = -static-libgfortran -static-libquadmath
 ompi_gnu_osx_db : FCOMPL = $(COMP_FC)
 ompi_gnu_osx_db : FOPENMPFLAGS = -fopenmp
 ompi_gnu_osx_db : obj = fds_ompi_gnu_osx_db
-ompi_gnu_osx_db : setup $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL) $(LFLAGS)
+ompi_gnu_osx_db : setup $(obj_ompi_gnu_osx_db)
+	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_ompi_gnu_osx_db) $(LFLAGSMKL) $(LFLAGS)
 
 ompi_gnu_osx_dv : FFLAGS = -O1 -fbacktrace -std=f2018 -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(FFLAGSMKL) $(GFORTRAN_OPTIONS) $(FFLAGS_HYPRE) $(FFLAGS_SUNDIALS)
 ompi_gnu_osx_dv : LFLAGSMKL = $(LFLAGSMKL_CUSTOM) $(CLT_VERSION) $(LFLAGS_HYPRE) $(LFLAGS_SUNDIALS)
