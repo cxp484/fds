@@ -1,0 +1,228 @@
+{
+  "model_info": {
+    "name": "RADCAL Neural Network Regressor",
+    "type": "Regression",
+    "framework": "PyTorch",
+    "description": "Neural network to predict radiation absorption (KAPPA) based on temperature, gas composition, and soot fraction",
+    "export_date": "2026-09-30 15:02:25.921503",
+    "script_date": "September 29, 2026"
+  },
+  "input": {
+    "shape": [
+      1,
+      6
+    ],
+    "dynamic_shape": [
+      "batch_size",
+      6
+    ],
+    "features": [
+      "TEMPERATURE_K",
+      "CO2",
+      "H2O",
+      "CO",
+      "C2H4",
+      "SOOT"
+    ],
+    "num_features": 6,
+    "dtype": "float32",
+    "units": [
+      "K",
+      "mole_fraction",
+      "mole_fraction",
+      "mole_fraction",
+      "mole_fraction",
+      "volume_fraction"
+    ],
+    "note": "Raw physical units. All transforms are inside the graph."
+  },
+  "output": {
+    "shape": [
+      1,
+      1
+    ],
+    "dynamic_shape": [
+      "batch_size",
+      1
+    ],
+    "name": "ln(KAPPA_10CM_CM-1)",
+    "dtype": "float32",
+    "range": "ln(kappa), approximately [-18.4, 2.0]",
+    "see": "target_transform"
+  },
+  "normalization": {
+    "type": "Standard normalization (z-score)",
+    "mean": [
+      1370.0,
+      -2.635719060897827,
+      -2.635719060897827,
+      -2.635719060897827,
+      -2.635719060897827,
+      -3.8691179752349854
+    ],
+    "std": [
+      664.6397705078125,
+      1.6208385229110718,
+      1.6208385229110718,
+      1.6208385229110718,
+      1.6208385229110718,
+      1.957374930381775
+    ],
+    "variance": [
+      441746.03125,
+      2.62711763381958,
+      2.62711763381958,
+      2.62711763381958,
+      2.62711763381958,
+      3.8313169479370117
+    ],
+    "formula": "(x - mean) / std",
+    "space": "log10",
+    "applied_after": "input_transform",
+    "source": "synthetic grid DataFrame (cells 3e/3f), not the training records",
+    "baked_into_graph": true,
+    "note": "Recorded for reference only. Already inside the exported graph -- do NOT apply externally."
+  },
+  "input_transform": {
+    "log_transform_inputs": true,
+    "log_mask": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "log_eps": [
+      0.0,
+      9.999999974752427e-07,
+      9.999999974752427e-07,
+      9.999999974752427e-07,
+      9.999999974752427e-07,
+      9.99999993922529e-09
+    ],
+    "formula": "log10(clamp(x, min=0) + eps) on masked columns, identity elsewhere",
+    "applied_before": "normalization",
+    "baked_into_graph": true,
+    "note": "The ONNX graph consumes RAW physical units. Do NOT pre-transform or pre-normalize the input."
+  },
+  "target_transform": {
+    "train_ln_kappa": true,
+    "model_output": "ln(KAPPA_10CM_CM-1)",
+    "inverse": "kappa = exp(output)",
+    "kappa_zero_value": 1e-08,
+    "note": "Training records with kappa < 1e-08 cm^-1 were excluded. Predictions below that value are extrapolation."
+  },
+  "architecture": {
+    "type": "Fully Connected Neural Network",
+    "layers": [
+      {
+        "name": "LogInput",
+        "type": "Fixed log10 transform on masked features",
+        "input_size": 6,
+        "output_size": 6
+      },
+      {
+        "name": "Normalization",
+        "type": "Custom normalization layer",
+        "input_size": 6,
+        "output_size": 6
+      },
+      {
+        "name": "hidden_1",
+        "type": "Linear",
+        "input_size": 6,
+        "output_size": 32,
+        "activation": "ReLU"
+      },
+      {
+        "name": "hidden_2",
+        "type": "Linear",
+        "input_size": 32,
+        "output_size": 64,
+        "activation": "ReLU"
+      },
+      {
+        "name": "hidden_3",
+        "type": "Linear",
+        "input_size": 64,
+        "output_size": 128,
+        "activation": "ReLU"
+      },
+      {
+        "name": "output",
+        "type": "Linear",
+        "input_size": 128,
+        "output_size": 1,
+        "activation": "Linear"
+      }
+    ],
+    "hidden_layers": [
+      32,
+      64,
+      128
+    ],
+    "total_parameters": 10785,
+    "trainable_parameters": 10785
+  },
+  "training": {
+    "epochs_configured": 20,
+    "batch_size": 2048,
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "learning_rate_decay": 0.96,
+    "loss_function": "MSE (Mean Squared Error)",
+    "loss_space": "ln(kappa)",
+    "early_stopping_patience": 10,
+    "grad_clip_max_norm": 1.0,
+    "validation_ratio": 0.1,
+    "dataset": "large"
+  },
+  "performance": {
+    "device_info": {
+      "trained_on_gpu": true,
+      "precision_dtype": "torch.float32"
+    },
+    "epochs_completed": 20,
+    "best_val_loss": 8.588876937866786e-06,
+    "final_train_loss": 1.0231355146377377e-05,
+    "final_val_mae": 0.001708960134928705,
+    "metrics_note": "Losses are in the loss_space given under 'training'.",
+    "training_completed": true
+  },
+  "files": {
+    "state_dict": "nn_radcal_model_best.pt",
+    "onnx_model": "nn_radcal_model_best.onnx",
+    "onnx_external_data": null,
+    "onnx_opset": 14,
+    "json_metadata": "nn_radcal_model_metadata.json",
+    "note": "If onnx_external_data is non-null it must be copied alongside the .onnx file or the model will not load."
+  },
+  "usage": {
+    "PyTorch": {
+      "description": "Load state dict and use with RegressionModel class",
+      "example": "checkpoint = torch.load('nn_radcal_model_best.pt')\nmodel = RegressionModel(input_size=checkpoint['num_features'], hidden_layers=checkpoint['hidden_layers'], norm_mean=checkpoint['normalization_mean'], norm_variance=checkpoint['normalization_variance'], activation=checkpoint['activation'])\nmodel.load_state_dict(checkpoint['model_state_dict'])"
+    },
+    "ONNX": {
+      "description": "Use with ONNX Runtime for cross-platform inference",
+      "example": "import onnxruntime as rt\nsess = rt.InferenceSession('nn_radcal_model_best.onnx')\npred = sess.run(None, {'input': input_data})"
+    },
+    "Preprocessing": {
+      "normalize_input": false,
+      "log_transform_input": false,
+      "note": "Both the log transform and the z-score normalization are inside the exported graph. Feed raw physical units (K, mole fraction, soot volume fraction). Applying either externally will silently corrupt the prediction."
+    },
+    "Postprocessing": {
+      "apply_exp_to_output": true,
+      "note": "Model emits ln(kappa); apply exp() to recover kappa in cm^-1."
+    }
+  },
+  "feature_descriptions": {
+    "TEMPERATURE_K": "Temperature in Kelvin",
+    "CO2": "CO2 mole fraction",
+    "H2O": "H2O mole fraction",
+    "CO": "CO mole fraction",
+    "C2H4": "C2H4 mole fraction",
+    "SOOT": "Soot volume fraction"
+  }
+}

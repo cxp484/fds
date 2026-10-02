@@ -5200,8 +5200,8 @@ END FUNCTION GET_KAPPA_DIRECT
 
 !> Construct the RadCal PL10 NN feature vector and evaluate the ONNX model.
 !> The model is trained on [temperature_K, x_co2, x_h2o, x_co, x_c2h4,
-!> soot_fv] and returns a gray, Planck-mean absorption coefficient in FDS
-!> units (m^-1).  The gas fractions reuse the same species conversion used by
+!> soot_fv]. PL10 v2 emits ln(kappa in cm^-1), converted below to an absorption
+!> coefficient in FDS units (m^-1). The gas fractions reuse the same species conversion used by
 !> GET_KAPPA; soot is converted from FDS mass fraction to volume fraction.
 
 SUBROUTINE GET_PL10_NN_KAPPA(Z_IN,TMP,RHO_GAS,KAPPA_NN,IERR,MESSAGE)
@@ -5240,7 +5240,7 @@ ENDIF
 
 KAPPA_NN = 0._EB
 CALL NNET_EVALUATE(PL10_NN_MODEL,FEATURES,NN_OUTPUT,IERR,MESSAGE)
-IF (IERR==0) KAPPA_NN = MAX(0._EB,NN_OUTPUT(1))
+IF (IERR==0) KAPPA_NN = 100._EB*EXP(NN_OUTPUT(1))
 
 END SUBROUTINE GET_PL10_NN_KAPPA
 
